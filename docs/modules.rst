@@ -5,17 +5,17 @@ Python Modules
 Core
 ----
 
-.. automodule:: mail_proxy.core
+.. automodule:: kajenn_mail_proxy.core
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: mail_proxy.mail_proxy_application
+.. automodule:: kajenn_mail_proxy.mail_proxy_application
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: mail_proxy.http_schema
+.. automodule:: kajenn_mail_proxy.http_schema
    :members:
    :undoc-members:
    :show-inheritance:
@@ -23,12 +23,12 @@ Core
 Database Layer
 --------------
 
-.. automodule:: mail_proxy.mailproxy_db
+.. automodule:: kajenn_mail_proxy.mailproxy_db
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: mail_proxy.sql
+.. automodule:: kajenn_mail_proxy.persistence
    :members:
    :undoc-members:
    :show-inheritance:
@@ -36,42 +36,42 @@ Database Layer
 Entities
 --------
 
-.. automodule:: mail_proxy.entities.tenant.table
+.. automodule:: kajenn_mail_proxy.entities.tenant.table
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: mail_proxy.entities.tenant.schema
+.. automodule:: kajenn_mail_proxy.entities.tenant.schema
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: mail_proxy.entities.account.table
+.. automodule:: kajenn_mail_proxy.entities.account.table
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: mail_proxy.entities.account.schema
+.. automodule:: kajenn_mail_proxy.entities.account.schema
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: mail_proxy.entities.message.table
+.. automodule:: kajenn_mail_proxy.entities.message.table
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: mail_proxy.entities.message.schema
+.. automodule:: kajenn_mail_proxy.entities.message.schema
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: mail_proxy.entities.send_log.table
+.. automodule:: kajenn_mail_proxy.entities.send_log.table
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: mail_proxy.entities.instance_config.table
+.. automodule:: kajenn_mail_proxy.entities.instance_config.table
    :members:
    :undoc-members:
    :show-inheritance:
@@ -79,12 +79,12 @@ Entities
 SMTP and Rate Limiting
 ----------------------
 
-.. automodule:: mail_proxy.smtp_pool
+.. automodule:: kajenn_mail_proxy.smtp_pool
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: mail_proxy.rate_limit
+.. automodule:: kajenn_mail_proxy.rate_limit
    :members:
    :undoc-members:
    :show-inheritance:
@@ -92,50 +92,70 @@ SMTP and Rate Limiting
 Attachments
 -----------
 
-.. automodule:: mail_proxy.attachments
+.. automodule:: kajenn_mail_proxy.attachments
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: mail_proxy.attachments.http_fetcher
+.. automodule:: kajenn_mail_proxy.attachments.http_fetcher
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: mail_proxy.attachments.base64_fetcher
+.. automodule:: kajenn_mail_proxy.attachments.base64_fetcher
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: mail_proxy.attachments.filesystem_fetcher
+.. automodule:: kajenn_mail_proxy.attachments.filesystem_fetcher
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: mail_proxy.attachments.cache
+.. automodule:: kajenn_mail_proxy.attachments.cache
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: mail_proxy.attachments.large_file_storage
+.. automodule:: kajenn_mail_proxy.attachments.large_file_storage
    :members:
    :undoc-members:
    :show-inheritance:
 
-Database Adapters
------------------
+Asqueel Persistence
+-------------------
 
-.. automodule:: mail_proxy.sql.adapters.base
+.. automodule:: kajenn_mail_proxy.asqueel_db
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: mail_proxy.sql.adapters.sqlite
+.. automodule:: kajenn_mail_proxy.persistence.mail_store
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: mail_proxy.sql.adapters.postgresql
+.. automodule:: kajenn_mail_proxy.persistence.table
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: kajenn_mail_proxy.persistence.operations
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: kajenn_mail_proxy.persistence.backend
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: kajenn_mail_proxy.persistence.schema
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: kajenn_mail_proxy.persistence.async_store
    :members:
    :undoc-members:
    :show-inheritance:
@@ -143,17 +163,17 @@ Database Adapters
 Utilities
 ---------
 
-.. automodule:: mail_proxy.prometheus
+.. automodule:: kajenn_mail_proxy.prometheus
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: mail_proxy.client
+.. automodule:: kajenn_mail_proxy.client
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: mail_proxy.fetcher
+.. automodule:: kajenn_mail_proxy.fetcher
    :members:
    :undoc-members:
    :show-inheritance:

@@ -2,7 +2,7 @@
 Integrations
 ============
 
-Guides for integrating genro-mail-proxy with popular web frameworks.
+Guides for integrating kajenn-mail-proxy with popular web frameworks.
 
 .. toctree::
    :maxdepth: 1

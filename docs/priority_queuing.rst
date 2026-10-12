@@ -2,7 +2,7 @@
 Priority Queuing
 ================
 
-genro-mail-proxy supports four priority levels for message ordering.
+kajenn-mail-proxy supports four priority levels for message ordering.
 Higher-priority messages are always processed before lower-priority ones.
 
 Priority Levels
@@ -60,7 +60,7 @@ Setting Message Priority
 
 .. code-block:: bash
 
-   curl -X POST http://localhost:8000/commands/add-messages \
+   curl -X POST http://localhost:8000/mailproxy/v1/commands/add-messages \
      -H "X-API-Token: $TOKEN" \
      -H "Content-Type: application/json" \
      -d '{
@@ -81,9 +81,9 @@ Setting Message Priority
 
 .. code-block:: python
 
-   from mail_proxy.client import MailProxyClient
+   from kajenn_mail_proxy.client import MailProxyClient
 
-   client = MailProxyClient("http://localhost:8000", token="your-token")
+   client = MailProxyClient("http://localhost:8000/mailproxy/v1", token="your-token")
 
    # Queue an urgent message
    client.messages.enqueue({
@@ -113,7 +113,7 @@ batch and override per-message:
 
 .. code-block:: bash
 
-   curl -X POST http://localhost:8000/commands/add-messages \
+   curl -X POST http://localhost:8000/mailproxy/v1/commands/add-messages \
      -H "X-API-Token: $TOKEN" \
      -H "Content-Type: application/json" \
      -d '{
@@ -270,7 +270,7 @@ Check queue composition by priority:
 .. code-block:: bash
 
    # Count messages by priority
-   curl "http://localhost:8000/messages?tenant_id=acme" \
+   curl "http://localhost:8000/mailproxy/v1/messages?tenant_id=acme" \
      -H "X-API-Token: $TOKEN" | \
      jq 'group_by(.priority) | map({priority: .[0].priority, count: length})'
 

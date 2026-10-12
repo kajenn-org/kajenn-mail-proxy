@@ -215,5 +215,7 @@ senza rilievi; Bandit con configurazione repository senza rilievi.
 
 Entrambe le fasi sono implementate. Dopo il checkpoint della migrazione,
 la pubblicazione GitHub è stata autorizzata su `kajenn-org/kajenn-mail-proxy`
-come repository pubblico. La configurazione di PyPI e Read the Docs resta
-a carico dell’utente; il link documentazione punta per ora ai sorgenti GitHub.
+come repository pubblico. Read the Docs è configurato dall’utente e verificato su
+https://kajenn-mail-proxy.readthedocs.io/en/latest/. README, badge, metadati
+e documentazione sono allineati a Kajenn e Asqueel. La configurazione del
+publisher PyPI è gestita dall’utente; non è stata avviata alcuna release.

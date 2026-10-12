@@ -1,7 +1,7 @@
 PEC Support (Posta Elettronica Certificata)
 ===========================================
 
-This document describes PEC (Posta Elettronica Certificata) support in genro-mail-proxy,
+This document describes PEC (Posta Elettronica Certificata) support in kajenn-mail-proxy,
 the Italian certified email system that provides legal proof of delivery.
 
 Overview
@@ -16,7 +16,7 @@ When you send a PEC message, the PEC provider issues receipts (ricevute) that pr
 
 These receipts have legal value equivalent to registered mail (raccomandata A/R).
 
-genro-mail-proxy extends its delivery tracking to support PEC-specific receipts,
+kajenn-mail-proxy extends its delivery tracking to support PEC-specific receipts,
 providing a complete audit trail for certified email communications.
 
 PEC Message Flow
@@ -25,7 +25,7 @@ PEC Message Flow
 .. code-block:: text
 
    ┌─────────────┐      REST       ┌──────────────────┐      SMTP      ┌─────────────┐
-   │ Application │ ──────────────► │ genro-mail-proxy │ ─────────────► │ PEC Server  │
+   │ Application │ ──────────────► │ kajenn-mail-proxy │ ─────────────► │ PEC Server  │
    └─────────────┘                 └──────────────────┘                └─────────────┘
                                           │                                   │
                                           │                                   │
@@ -87,7 +87,7 @@ configure IMAP settings for receipt polling:
 
 .. code-block:: bash
 
-   curl -X POST http://localhost:8000/account \
+   curl -X POST http://localhost:8000/mailproxy/v1/account \
      -H "Content-Type: application/json" \
      -H "X-API-Token: your-api-token" \
      -d '{
@@ -193,53 +193,17 @@ timeout (default: 30 minutes), it's flagged as potentially problematic:
 
 * Messages without ``pec_acceptance`` event after timeout get a ``pec_timeout`` event
 * This helps identify delivery issues that might otherwise go unnoticed
-* The timeout is configurable via ``GMP_PEC_ACCEPTANCE_TIMEOUT`` (seconds)
-
-.. code-block:: bash
-
-   # Set PEC acceptance timeout to 1 hour
-   export GMP_PEC_ACCEPTANCE_TIMEOUT=3600
+* ``PecReceiver`` accepts an ``acceptance_timeout`` argument in seconds;
+  the standalone factory does not expose a ``GMP_PEC_ACCEPTANCE_TIMEOUT`` setting.
 
 API Endpoints
 -------------
 
-``GET /messages/{message_id}/events``
-   Get all events for a message, including PEC receipts.
+``GET /mailproxy/v1/messages?tenant_id=acme&include_history=true``
+   List messages with their events in each message's ``history`` field,
+   including PEC receipts. Select the required message by its ``id``.
 
-   Response:
-
-   .. code-block:: json
-
-      {
-        "ok": true,
-        "events": [
-          {
-            "event_type": "queued",
-            "event_ts": 1705750000,
-            "event_data": {}
-          },
-          {
-            "event_type": "sent",
-            "event_ts": 1705750100,
-            "event_data": {"smtp_response": "250 OK"}
-          },
-          {
-            "event_type": "pec_acceptance",
-            "event_ts": 1705750150,
-            "event_data": {"receipt_type": "accettazione"}
-          },
-          {
-            "event_type": "pec_delivery",
-            "event_ts": 1705750800,
-            "event_data": {
-              "receipt_type": "avvenuta-consegna",
-              "recipient": "dest@pec.it"
-            }
-          }
-        ]
-      }
-
-``GET /accounts``
+``GET /mailproxy/v1/accounts?tenant_id=acme``
    List accounts. PEC accounts include ``is_pec_account: true``.
 
    Response includes:
@@ -412,7 +376,7 @@ Complete Example
 
    .. code-block:: bash
 
-      curl -X POST http://localhost:8000/account \
+      curl -X POST http://localhost:8000/mailproxy/v1/account \
         -H "Content-Type: application/json" \
         -H "X-API-Token: your-api-token" \
         -d '{
@@ -432,12 +396,13 @@ Complete Example
 
    .. code-block:: bash
 
-      curl -X POST http://localhost:8000/commands/add-messages \
+      curl -X POST http://localhost:8000/mailproxy/v1/commands/add-messages \
         -H "Content-Type: application/json" \
         -H "X-API-Token: your-api-token" \
         -d '{
           "messages": [{
             "id": "legal-notice-001",
+            "tenant_id": "acme",
             "account_id": "pec-legal",
             "from": "acme@pec.it",
             "to": ["destinatario@pec.it"],
@@ -450,7 +415,7 @@ Complete Example
 
    .. code-block:: bash
 
-      curl http://localhost:8000/messages/legal-notice-001/events \
+      curl "http://localhost:8000/mailproxy/v1/messages?tenant_id=acme&include_history=true" \
         -H "X-API-Token: your-api-token"
 
 4. **Expected timeline:**

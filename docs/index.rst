@@ -1,130 +1,82 @@
+Kajenn Mail Proxy
+=================
 
-genro-mail-proxy
-================
+An asynchronous email dispatcher built as a Kajenn ``McpOpenApiApplication``.
+Applications enqueue messages through REST or MCP; background workers deliver
+email over SMTP and report results through HTTP callbacks.
 
-.. image:: _static/logo.png
-   :alt: logo
-   :align: right
-   :width: 120px
+Features
+--------
 
-A microservice that decouples email delivery from your application.
-
-What it does
-------------
-
-genro-mail-proxy sits between your application and SMTP servers. Your application
-sends messages to the proxy via REST API; the proxy handles delivery with:
-
-- **Persistent queue**: Messages are stored in SQLite and survive restarts
-- **Automatic retry**: Failed deliveries are retried with exponential backoff
-- **Rate limiting**: Per-account limits (minute/hour/day) shared across instances
-- **Priority queuing**: Four levels (immediate, high, medium, low) with FIFO within each
-- **Delivery reports**: Results are posted back to your application via HTTP callback
-- **Bounce detection**: IMAP polling for bounces with DSN parsing and hard/soft classification
-- **Multi-tenancy**: Multiple organizations can share one instance with separate accounts
+- Persistent queues on SQLite or PostgreSQL, managed through Asqueel.
+- Automatic retry, priorities and deferred delivery.
+- Per-account rate limits and pooled SMTP connections.
+- Multi-tenant accounts, credentials and message access.
+- Delivery reports, event history and Prometheus metrics.
+- IMAP bounce detection and Italian PEC receipt tracking.
+- Attachments from inline content, local files, tenant endpoints or HTTP URLs.
 
 Architecture
-~~~~~~~~~~~~
+------------
 
-.. code-block:: text
+Kajenn hosts the application and exposes compatibility REST routes at
+``/mailproxy/v1``, typed operations at ``/mailproxy/api`` and MCP at
+``/mailproxy/mcp``. Authenticate using ``X-API-Token`` with an admin or tenant
+token; unauthenticated requests do not receive admin permissions.
 
-   ┌─────────────┐      REST       ┌──────────────────┐      SMTP      ┌─────────────┐
-   │ Application │ ──────────────► │ genro-mail-proxy │ ─────────────► │ SMTP Server │
-   └─────────────┘                 └──────────────────┘                └─────────────┘
-          ▲                               │
-          │                               │
-          └───────────────────────────────┘
-                   delivery reports
-
-The proxy exposes a FastAPI REST API secured by ``X-API-Token``. Background loops
-handle SMTP delivery and delivery report callbacks.
-
-When to use it
---------------
-
-Consider this proxy when:
-
-- **Multiple application instances** need shared rate limits for outbound email
-- **Email delivery should not block** your application's main request flow
-- **Delivery tracking** is needed with central logging and metrics
-- **Retry logic** is required without implementing it in every service
-- **Multi-tenant isolation** is needed for different organizations or environments
-
-When NOT to use it
-------------------
-
-This proxy adds operational complexity. Direct SMTP may be simpler when:
-
-- You have a **single application instance** with low email volume
-- **Latency is acceptable** (direct SMTP adds ~500-600ms per send)
-- **No retry logic** is needed (transactional emails with immediate feedback)
-- **No rate limiting** is required by your SMTP provider
-- You prefer **fewer moving parts** in your infrastructure
-
-Command-line interface
-----------------------
-
-The ``mail-proxy`` CLI manages instances without going through the HTTP API:
-
-.. code-block:: bash
-
-   # Instance management
-   mail-proxy list                          # List all instances
-   mail-proxy start myserver                # Start an instance
-   mail-proxy stop myserver                 # Stop an instance
-   mail-proxy myserver info                 # Show instance details
-
-   # Tenant management
-   mail-proxy myserver tenants list         # List tenants
-   mail-proxy myserver tenants add acme     # Add a tenant (interactive)
-
-   # Account management (per tenant)
-   mail-proxy myserver acme accounts list   # List SMTP accounts
-   mail-proxy myserver acme accounts add    # Add account (interactive)
-
-   # Message operations
-   mail-proxy myserver acme messages list   # List queued messages
-   mail-proxy myserver acme send email.eml  # Send from .eml file
-   mail-proxy myserver acme run-now         # Trigger immediate dispatch
-
-Each instance stores its configuration in ``~/.mail-proxy/<name>/mail_service.db``.
-The CLI supports both command-line arguments and interactive prompts for complex
-operations like adding tenants or accounts.
+Each synchronous Asqueel database operation runs as a complete transaction in
+Kajenn's thread pool. SMTP delivery and HTTP callbacks remain asynchronous.
+See :doc:`architecture_overview` and :doc:`api_reference` for details.
 
 Quick start
 -----------
 
-**Docker**:
+Use Python 3.11 or newer and install from the repository:
 
 .. code-block:: bash
 
-   docker run -p 8000:8000 \
-     -e GMP_API_TOKEN=your-secret-token \
-     genro-mail-proxy
+   git clone https://github.com/kajenn-org/kajenn-mail-proxy.git
+   cd kajenn-mail-proxy
+   python -m venv .venv
+   source .venv/bin/activate
+   pip install -e .
+   export GMP_DB_PATH=./mail_service.db
+   export GMP_API_TOKEN=replace-with-a-secret
+   uvicorn kajenn_mail_proxy.server:build_server --factory --port 8000
 
-**CLI**:
+Then configure a tenant, add an SMTP account and enqueue messages.
+See :doc:`installation` and :doc:`usage` for the complete procedure.
+
+Command-line interface
+----------------------
+
+The command remains ``mail-proxy``:
 
 .. code-block:: bash
 
-   pip install genro-mail-proxy
+   mail-proxy list
    mail-proxy start myserver
+   mail-proxy myserver tenants add acme
+   mail-proxy myserver acme accounts add
+   mail-proxy myserver acme send email.eml
 
-Then configure a tenant, add an SMTP account, and start sending messages.
-See :doc:`installation` and :doc:`usage` for details.
+CLI instances store their data at ``~/.mail-proxy/<name>/mail_service.db``.
+See :doc:`cli_reference` for commands and options.
 
-Performance notes
------------------
+Deployment and upgrades
+-----------------------
 
-When the proxy is under load:
+Run one dispatcher per database. Multi-process queue coordination and
+exactly-once delivery are not guaranteed. A legacy rate-log limitation can
+share rate counts between accounts with the same ID in different tenants;
+use globally unique account IDs.
 
-- **Request latency**: ~30ms to queue a message (vs ~600ms for direct SMTP)
-- **Throughput**: Limited by SMTP provider rate limits, not the proxy
-- **Memory**: Attachment content is held in memory during send; use HTTP endpoints
-  for large files instead of base64 encoding
+For an existing installation, follow :doc:`asqueel-migration` before upgrading.
+The :doc:`migration-baseline` records the original migration checks and known
+limitations, including bounce correlation/reporting failures.
 
-The SQLite database handles typical workloads but doesn't scale well under high
-concurrency. For high-volume deployments, consider running multiple instances
-with separate databases.
+Source code and issues are available on
+`GitHub <https://github.com/kajenn-org/kajenn-mail-proxy>`_.
 
 .. toctree::
    :maxdepth: 2
@@ -152,3 +104,5 @@ with separate databases.
    contributing
    fullstack_testing
    fullstack_testing_reference
+   asqueel-migration
+   migration-baseline

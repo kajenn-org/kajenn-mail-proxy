@@ -1,7 +1,7 @@
 Architecture Overview
-====================
+=====================
 
-This document explains the architectural benefits of using genro-mail-proxy
+This document explains the architectural benefits of using kajenn-mail-proxy
 as an email proxy instead of directly connecting to SMTP servers from your application.
 
 .. contents::
@@ -9,7 +9,7 @@ as an email proxy instead of directly connecting to SMTP servers from your appli
    :depth: 2
 
 Why Use an Email Proxy?
-------------------------
+-----------------------
 
 When building enterprise applications, sending emails directly from the application
 to SMTP servers introduces several challenges:
@@ -22,7 +22,7 @@ to SMTP servers introduces several challenges:
 6. **No centralized monitoring** of email delivery
 7. **Difficult debugging** of delivery issues
 
-genro-mail-proxy solves these problems by introducing a **decoupled, asynchronous
+kajenn-mail-proxy solves these problems by introducing a **decoupled, asynchronous
 email delivery layer** that sits between your application and SMTP servers.
 
 Architecture Pattern
@@ -83,7 +83,7 @@ Proxy-Based Architecture
                       │
                       ▼ (async, decoupled)
    ┌─────────────────────────────────────────────────────┐
-   │         genro-mail-proxy                             │
+   │         kajenn-mail-proxy                             │
    │                                                      │
    │  ┌────────────┐    ┌──────────────┐                │
    │  │  Messages  │───→│  SMTP Pool   │───→ Send       │
@@ -116,7 +116,7 @@ Key Benefits
 ------------
 
 1. Decoupling (Write vs Send Concern)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Separation of Responsibilities:**
 
@@ -138,7 +138,7 @@ Key Benefits
 
        # 3. Trigger async send (best effort)
        try:
-           httpx.post("http://localhost:8000/commands/run-now", timeout=2)
+           httpx.post("http://localhost:8000/mailproxy/v1/commands/run-now", timeout=2)
        except:
            pass  # Non-blocking, polling will handle it
 
@@ -175,7 +175,7 @@ Key Benefits
        return order
 
 2. Resilience and Reliability
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Failure Scenarios Handled:**
 
@@ -222,7 +222,7 @@ Key Benefits
 **With Direct SMTP:** User would have seen "Order creation failed" at T=0:01 ❌
 
 3. Performance Optimization
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Connection Pooling
 """"""""""""""""""
@@ -253,7 +253,7 @@ The proxy maintains persistent SMTP connections (5 min TTL):
 - **Improvement: 10x faster** ⚡
 
 Async Processing
-"""""""""""""""""
+""""""""""""""""
 
 .. code-block:: text
 
@@ -279,7 +279,7 @@ Async Processing
 - With Proxy: Instant response, email sent in background
 
 4. Centralized Rate Limiting
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Problem with Direct SMTP:**
 
@@ -340,11 +340,11 @@ Async Processing
             Message 11 sent successfully ✅
 
 5. Monitoring and Observability
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Centralized Metrics:**
 
-The proxy exposes Prometheus metrics at ``GET /metrics``:
+The proxy exposes Prometheus metrics at ``GET /mailproxy/v1/metrics``:
 
 .. code-block:: text
 
@@ -403,7 +403,7 @@ The proxy exposes Prometheus metrics at ``GET /metrics``:
 **With Direct SMTP:** No centralized visibility, must check logs on each server ❌
 
 6. Multi-Tenant Support
-^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^
 
 **Multiple SMTP Accounts:**
 
@@ -470,7 +470,7 @@ The proxy exposes Prometheus metrics at ``GET /metrics``:
 - ✅ Cost optimization (cheap provider for bulk, reliable for transactional)
 
 7. Debugging and Troubleshooting
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Diagnostic Tools Included:**
 
@@ -524,7 +524,7 @@ The proxy exposes Prometheus metrics at ``GET /metrics``:
 **With Direct SMTP:** Must check application logs, no centralized view ❌
 
 8. Attachment Handling
-^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^
 
 **Flexible Attachment Sources:**
 
@@ -567,7 +567,7 @@ The proxy exposes Prometheus metrics at ``GET /metrics``:
 - ✅ Caching with MD5 markers
 
 9. Priority Queuing
-^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^
 
 **Message Prioritization:**
 
@@ -646,7 +646,7 @@ Comparison Summary
 
    * - Aspect
      - Direct SMTP
-     - genro-mail-proxy
+     - kajenn-mail-proxy
    * - **Request Latency**
      - 500-2000ms ❌
      - 20-50ms ✅
@@ -685,7 +685,7 @@ Comparison Summary
      - URL/base64/filesystem ✅
 
 When to Use This Architecture
-------------------------------
+-----------------------------
 
 **Ideal For:**
 
@@ -709,17 +709,17 @@ Migration Path
 
 .. code-block:: bash
 
-   # Deploy genro-mail-proxy
+   # Deploy kajenn-mail-proxy
    docker run -p 8000:8000 \
      -v /data:/data \
-     -e API_TOKEN=secret \
-     genro-mail-proxy
+     -e GMP_API_TOKEN=secret \
+     kajenn-mail-proxy
 
 **Step 2: Add SMTP Account**
 
 .. code-block:: bash
 
-   curl -X POST http://localhost:8000/account \
+   curl -X POST http://localhost:8000/mailproxy/v1/account \
      -H "X-API-Token: secret" \
      -d '{
        "id": "smtp-main",
@@ -753,7 +753,7 @@ Migration Path
 
        # 2. Trigger (optional)
        try:
-           httpx.post("http://localhost:8000/commands/run-now")
+           httpx.post("http://localhost:8000/mailproxy/v1/commands/run-now")
        except:
            pass  # Polling handles it
 
@@ -762,16 +762,16 @@ Migration Path
 .. code-block:: bash
 
    # Check metrics
-   curl http://localhost:8000/metrics
+   curl http://localhost:8000/mailproxy/v1/metrics
 
    # Adjust rate limits if needed
-   curl -X POST http://localhost:8000/account \
+   curl -X POST http://localhost:8000/mailproxy/v1/account \
      -d '{"id": "smtp-main", "limit_per_minute": 50}'
 
 Conclusion
 ----------
 
-genro-mail-proxy provides a **production-ready email delivery layer** that
+kajenn-mail-proxy provides a **production-ready email delivery layer** that
 solves common problems in enterprise email sending:
 
 1. ⚡ **Performance** - 10-50x faster via connection pooling

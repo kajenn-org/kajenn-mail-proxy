@@ -2,7 +2,7 @@ Network Requirements
 ====================
 
 This document describes the network connectivity requirements for deploying
-genro-mail-proxy in production environments, including firewall rules, port
+kajenn-mail-proxy in production environments, including firewall rules, port
 configurations, and network topology.
 
 .. contents::
@@ -12,7 +12,7 @@ configurations, and network topology.
 Network Architecture
 --------------------
 
-genro-mail-proxy acts as a middleware service between your your application application
+kajenn-mail-proxy acts as a middleware service between your your application application
 and external SMTP servers. Understanding the network flows is essential for
 proper firewall configuration and security planning.
 
@@ -27,7 +27,7 @@ Network Flow Diagram
 
    ┌──────────────────┐                    ┌──────────────────┐
    │                  │ ➊ REST API         │                  │
-   │    your application       │───────────────────>│ genro-mail-proxy │
+   │    your application       │───────────────────>│ kajenn-mail-proxy │
    │  Application     │   (HTTP/HTTPS)     │                  │
    │                  │                    │                  │
    │                  │ ➋ Delivery Reports │                  │
@@ -47,10 +47,10 @@ Network Flow Diagram
 Connection Details
 ------------------
 
-1. your application → genro-mail-proxy (REST API)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1. your application → kajenn-mail-proxy (REST API)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**Direction:** Inbound to genro-mail-proxy
+**Direction:** Inbound to kajenn-mail-proxy
 
 **Protocol:** HTTP or HTTPS
 
@@ -73,9 +73,9 @@ Connection Details
 
 .. code-block:: text
 
-   # Allow your application instances to reach genro-mail-proxy
+   # Allow your application instances to reach kajenn-mail-proxy
    Source: your application servers (e.g., 10.0.1.0/24)
-   Destination: genro-mail-proxy (e.g., 10.0.2.10)
+   Destination: kajenn-mail-proxy (e.g., 10.0.2.10)
    Port: 8000/tcp (or configured GMP_PORT)
    Protocol: TCP
    Action: ALLOW
@@ -84,24 +84,24 @@ Connection Details
 
 - Use HTTPS in production (configure via reverse proxy like nginx)
 - Set strong ``GMP_API_TOKEN`` (minimum 32 characters)
-- Consider network segmentation (genro-mail-proxy in DMZ or separate subnet)
+- Consider network segmentation (kajenn-mail-proxy in DMZ or separate subnet)
 - Enable firewall rules to restrict access to known your application IPs only
 
 **Client Configuration:**
 
 The your application client must be configured with:
 
-- **Mail Proxy URL**: The base URL where genro-mail-proxy is accessible (e.g., ``http://mail-proxy.internal:8000``)
+- **Mail Proxy URL**: The base URL where kajenn-mail-proxy is accessible (e.g., ``http://mail-proxy.internal:8000``)
 - **API Token**: The authentication token matching ``GMP_API_TOKEN`` on the proxy server
 
 The client uses these parameters when making REST API calls to the proxy endpoints.
 See ``example_client.py`` for a reference implementation showing how to configure
 and use these parameters in your client application.
 
-2. genro-mail-proxy → your application (Delivery Reports)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2. kajenn-mail-proxy → your application (Delivery Reports)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**Direction:** Outbound from genro-mail-proxy
+**Direction:** Outbound from kajenn-mail-proxy
 
 **Protocol:** HTTP or HTTPS
 
@@ -116,7 +116,7 @@ and use these parameters in your client application.
 **Typical Endpoint:** ``/email/mailproxy/mp_endpoint/proxy_sync``
 
 **Purpose:**
-genro-mail-proxy periodically reports message delivery status back to your application
+kajenn-mail-proxy periodically reports message delivery status back to your application
 (sent, error, deferred). This allows your application to update its database and track
 email delivery lifecycle.
 
@@ -124,8 +124,8 @@ email delivery lifecycle.
 
 .. code-block:: text
 
-   # Allow genro-mail-proxy to report back to your application
-   Source: genro-mail-proxy (e.g., 10.0.2.10)
+   # Allow kajenn-mail-proxy to report back to your application
+   Source: kajenn-mail-proxy (e.g., 10.0.2.10)
    Destination: your application servers (e.g., 10.0.1.0/24)
    Port: Application port (e.g., 8080/tcp)
    Protocol: TCP
@@ -161,10 +161,10 @@ email delivery lifecycle.
    # Or use token
    export GMP_CLIENT_SYNC_TOKEN="your-sync-token"
 
-3. genro-mail-proxy → SMTP Servers
+3. kajenn-mail-proxy → SMTP Servers
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-**Direction:** Outbound from genro-mail-proxy
+**Direction:** Outbound from kajenn-mail-proxy
 
 **Protocol:** SMTP, SMTP+STARTTLS, or SMTPS
 
@@ -177,15 +177,15 @@ email delivery lifecycle.
 **Authentication:** Per-account credentials (username/password)
 
 **DNS Requirements:**
-genro-mail-proxy needs to resolve SMTP server hostnames (e.g., smtp.gmail.com,
+kajenn-mail-proxy needs to resolve SMTP server hostnames (e.g., smtp.gmail.com,
 email-smtp.eu-west-1.amazonaws.com)
 
 **Firewall Rules:**
 
 .. code-block:: text
 
-   # Allow genro-mail-proxy to reach SMTP servers
-   Source: genro-mail-proxy (e.g., 10.0.2.10)
+   # Allow kajenn-mail-proxy to reach SMTP servers
+   Source: kajenn-mail-proxy (e.g., 10.0.2.10)
    Destination: Internet SMTP servers (any)
    Ports: 25/tcp, 587/tcp, 465/tcp
    Protocol: TCP
@@ -227,7 +227,7 @@ email-smtp.eu-west-1.amazonaws.com)
 .. code-block:: bash
 
    # Add SMTP account via API
-   curl -X POST http://localhost:8000/account \\
+   curl -X POST http://localhost:8000/mailproxy/v1/account \\
      -H "X-API-Token: your-token" \\
      -H "Content-Type: application/json" \\
      -d '{
@@ -242,7 +242,7 @@ email-smtp.eu-west-1.amazonaws.com)
 Port Configuration
 ------------------
 
-genro-mail-proxy Service Port
+kajenn-mail-proxy Service Port
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Environment Variable:** ``GMP_PORT``
@@ -258,10 +258,10 @@ reverse proxy (nginx, Traefik) on standard ports 80/443.
 .. code-block:: bash
 
    # Map container port to host
-   docker run -p 8000:8000 genro-mail-proxy
+   docker run -p 8000:8000 kajenn-mail-proxy
 
    # Or use custom port
-   docker run -p 9000:8000 -e GMP_PORT=8000 genro-mail-proxy
+   docker run -p 9000:8000 -e GMP_PORT=8000 kajenn-mail-proxy
 
 **Kubernetes Service:**
 
@@ -270,10 +270,10 @@ reverse proxy (nginx, Traefik) on standard ports 80/443.
    apiVersion: v1
    kind: Service
    metadata:
-     name: genro-mail-proxy
+     name: kajenn-mail-proxy
    spec:
      selector:
-       app: genro-mail-proxy
+       app: kajenn-mail-proxy
      ports:
        - port: 8000
          targetPort: 8000
@@ -283,7 +283,7 @@ Deployment Scenarios
 --------------------
 
 Scenario 1: Single Host (Development)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: text
 
@@ -310,7 +310,7 @@ Scenario 1: Single Host (Development)
    GMP_CLIENT_SYNC_URL=http://127.0.0.1:8080/email/mailproxy/mp_endpoint/proxy_sync
 
 Scenario 2: Separate Hosts (Production)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: text
 
@@ -333,7 +333,7 @@ Scenario 2: Separate Hosts (Production)
 
 .. code-block:: bash
 
-   # On genro-mail-proxy host
+   # On kajenn-mail-proxy host
    # Allow inbound API from your application
    iptables -A INPUT -s 10.0.1.10 -p tcp --dport 8000 -j ACCEPT
 
@@ -344,7 +344,7 @@ Scenario 2: Separate Hosts (Production)
    iptables -A OUTPUT -p tcp --dport 587 -j ACCEPT
 
 Scenario 3: Kubernetes Cluster
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: text
 
@@ -370,11 +370,11 @@ Scenario 3: Kubernetes Cluster
    apiVersion: networking.k8s.io/v1
    kind: NetworkPolicy
    metadata:
-     name: genro-mail-proxy-policy
+     name: kajenn-mail-proxy-policy
    spec:
      podSelector:
        matchLabels:
-         app: genro-mail-proxy
+         app: kajenn-mail-proxy
      policyTypes:
        - Ingress
        - Egress
@@ -413,7 +413,7 @@ Scenario 3: Kubernetes Cluster
 
 .. code-block:: bash
 
-   # genro-mail-proxy uses service DNS name
+   # kajenn-mail-proxy uses service DNS name
    export GMP_CLIENT_SYNC_URL="http://app-svc.default.svc.cluster.local:8080/email/mailproxy/mp_endpoint/proxy_sync"
 
 Security Considerations
@@ -422,9 +422,9 @@ Security Considerations
 TLS/SSL Configuration
 ^^^^^^^^^^^^^^^^^^^^^
 
-**For API Communication (your application ↔ genro-mail-proxy):**
+**For API Communication (your application ↔ kajenn-mail-proxy):**
 
-genro-mail-proxy does not natively support HTTPS. Use a reverse proxy:
+kajenn-mail-proxy does not natively support HTTPS. Use a reverse proxy:
 
 .. code-block:: nginx
 
@@ -520,14 +520,14 @@ Connection Testing
 
 .. code-block:: bash
 
-   # From genro-mail-proxy server
+   # From kajenn-mail-proxy server
    telnet smtp.gmail.com 587
 
 **Test your application Callback:**
 
 .. code-block:: bash
 
-   # From genro-mail-proxy server
+   # From kajenn-mail-proxy server
    curl -u syncuser:syncpass \\
      http://myapp:8080/email/mailproxy/mp_endpoint/proxy_sync \\
      -H "Content-Type: application/json" \\
@@ -536,7 +536,7 @@ Connection Testing
 Common Issues
 ^^^^^^^^^^^^^
 
-**Issue: Connection refused to genro-mail-proxy**
+**Issue: Connection refused to kajenn-mail-proxy**
 
 .. code-block:: text
 
@@ -565,7 +565,7 @@ Common Issues
    4. Check your application logs for incoming requests
 
 Monitoring and Logging
------------------------
+----------------------
 
 **Enable Network Logging:**
 
@@ -589,17 +589,17 @@ Monitoring and Logging
 .. code-block:: bash
 
    # Check metrics endpoint
-   curl http://localhost:8000/metrics
+   curl http://localhost:8000/mailproxy/v1/metrics
 
 Summary Checklist
 -----------------
 
-Before deploying genro-mail-proxy, ensure:
+Before deploying kajenn-mail-proxy, ensure:
 
 ☑ **Firewall Rules:**
-  - ✅ your application → genro-mail-proxy (port 8000)
-  - ✅ genro-mail-proxy → your application (application port)
-  - ✅ genro-mail-proxy → Internet SMTP (port 587)
+  - ✅ your application → kajenn-mail-proxy (port 8000)
+  - ✅ kajenn-mail-proxy → your application (application port)
+  - ✅ kajenn-mail-proxy → Internet SMTP (port 587)
 
 ☑ **DNS Resolution:**
   - ✅ SMTP server hostnames resolve correctly

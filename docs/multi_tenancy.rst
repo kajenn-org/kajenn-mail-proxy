@@ -1,14 +1,14 @@
 Multi-tenancy Architecture
 ==========================
 
-This document describes the multi-tenant architecture of genro-mail-proxy,
+This document describes the multi-tenant architecture of kajenn-mail-proxy,
 including how to configure tenants and the bidirectional PUSH communication
 pattern between the proxy and tenant servers.
 
 Overview
 --------
 
-genro-mail-proxy supports multiple tenants, each with:
+kajenn-mail-proxy supports multiple tenants, each with:
 
 * Dedicated SMTP accounts
 * Per-tenant delivery report routing
@@ -62,7 +62,7 @@ The following diagram illustrates the complete message lifecycle:
 API Authentication Model
 ------------------------
 
-genro-mail-proxy implements a **two-tier authentication model**:
+kajenn-mail-proxy implements a **two-tier authentication model**:
 
 1. **Global Admin Token** (``GMP_API_TOKEN``): Full access to all endpoints and all tenants
 2. **Tenant-Specific Token**: Limited access to the tenant's own resources only
@@ -166,7 +166,7 @@ generated** and returned in the response:
 
 .. code-block:: bash
 
-   curl -X POST http://localhost:8000/tenant \
+   curl -X POST http://localhost:8000/mailproxy/v1/tenant \
      -H "Content-Type: application/json" \
      -H "X-API-Token: $ADMIN_TOKEN" \
      -d '{"id": "acme", "name": "ACME Corp"}'
@@ -203,7 +203,7 @@ Managing Tenant API Keys
 
 .. code-block:: bash
 
-   curl -X POST http://localhost:8000/tenant/acme/api-key \
+   curl -X POST http://localhost:8000/mailproxy/v1/tenant/acme/api-key \
      -H "X-API-Token: $ADMIN_TOKEN"
 
 Response:
@@ -219,7 +219,7 @@ Response:
 
 .. code-block:: bash
 
-   curl -X DELETE http://localhost:8000/tenant/acme/api-key \
+   curl -X DELETE http://localhost:8000/mailproxy/v1/tenant/acme/api-key \
      -H "X-API-Token: $ADMIN_TOKEN"
 
 Response:
@@ -653,7 +653,7 @@ Complete tenant setup example:
    .. code-block:: bash
 
       # Use the global admin token (GMP_API_TOKEN)
-      curl -X POST http://localhost:8000/tenant \
+      curl -X POST http://localhost:8000/mailproxy/v1/tenant \
         -H "Content-Type: application/json" \
         -H "X-API-Token: $ADMIN_TOKEN" \
         -d '{
@@ -682,7 +682,7 @@ Complete tenant setup example:
    .. code-block:: bash
 
       # Use either admin token or the tenant's own token
-      curl -X POST http://localhost:8000/account \
+      curl -X POST http://localhost:8000/mailproxy/v1/account \
         -H "Content-Type: application/json" \
         -H "X-API-Token: $ACME_TENANT_TOKEN" \
         -d '{
@@ -699,7 +699,7 @@ Complete tenant setup example:
 
    .. code-block:: bash
 
-      curl -X POST http://localhost:8000/commands/add-messages \
+      curl -X POST http://localhost:8000/mailproxy/v1/commands/add-messages \
         -H "Content-Type: application/json" \
         -H "X-API-Token: $ACME_TENANT_TOKEN" \
         -d '{
@@ -781,11 +781,11 @@ Suspend/Activate API
    .. code-block:: bash
 
       # Suspend all sending for tenant
-      curl -X POST "http://localhost:8000/commands/suspend?tenant_id=acme" \
+      curl -X POST "http://localhost:8000/mailproxy/v1/commands/suspend?tenant_id=acme" \
         -H "X-API-Token: your-api-token"
 
       # Suspend only a specific batch
-      curl -X POST "http://localhost:8000/commands/suspend?tenant_id=acme&batch_code=NL-2026-01" \
+      curl -X POST "http://localhost:8000/mailproxy/v1/commands/suspend?tenant_id=acme&batch_code=NL-2026-01" \
         -H "X-API-Token: your-api-token"
 
    Response:
@@ -813,11 +813,11 @@ Suspend/Activate API
    .. code-block:: bash
 
       # Activate all sending for tenant (clear all suspensions)
-      curl -X POST "http://localhost:8000/commands/activate?tenant_id=acme" \
+      curl -X POST "http://localhost:8000/mailproxy/v1/commands/activate?tenant_id=acme" \
         -H "X-API-Token: your-api-token"
 
       # Activate only a specific batch
-      curl -X POST "http://localhost:8000/commands/activate?tenant_id=acme&batch_code=NL-2026-01" \
+      curl -X POST "http://localhost:8000/mailproxy/v1/commands/activate?tenant_id=acme&batch_code=NL-2026-01" \
         -H "X-API-Token: your-api-token"
 
    Response:
@@ -862,7 +862,7 @@ Complete Workflow Example
 
    .. code-block:: bash
 
-      curl -X POST http://localhost:8000/commands/add-messages \
+      curl -X POST http://localhost:8000/mailproxy/v1/commands/add-messages \
         -H "Content-Type: application/json" \
         -H "X-API-Token: your-api-token" \
         -d '{
@@ -877,7 +877,7 @@ Complete Workflow Example
 
    .. code-block:: bash
 
-      curl -X POST "http://localhost:8000/commands/suspend?tenant_id=acme&batch_code=NL-2026-01" \
+      curl -X POST "http://localhost:8000/mailproxy/v1/commands/suspend?tenant_id=acme&batch_code=NL-2026-01" \
         -H "X-API-Token: your-api-token"
 
       # Response shows 4500 pending messages in that batch
@@ -886,7 +886,7 @@ Complete Workflow Example
 
    .. code-block:: bash
 
-      curl -X POST http://localhost:8000/commands/add-messages \
+      curl -X POST http://localhost:8000/mailproxy/v1/commands/add-messages \
         -H "Content-Type: application/json" \
         -H "X-API-Token: your-api-token" \
         -d '{
@@ -901,7 +901,7 @@ Complete Workflow Example
 
    .. code-block:: bash
 
-      curl -X POST "http://localhost:8000/commands/activate?tenant_id=acme&batch_code=NL-2026-01" \
+      curl -X POST "http://localhost:8000/mailproxy/v1/commands/activate?tenant_id=acme&batch_code=NL-2026-01" \
         -H "X-API-Token: your-api-token"
 
       # Messages with corrected content are now being sent

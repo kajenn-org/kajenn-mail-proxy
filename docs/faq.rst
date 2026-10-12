@@ -2,12 +2,12 @@
 FAQ
 ===
 
-Frequently asked questions about genro-mail-proxy.
+Frequently asked questions about kajenn-mail-proxy.
 
 General
 -------
 
-**What is genro-mail-proxy?**
+**What is kajenn-mail-proxy?**
    A microservice that decouples email sending from your application. Instead of
    connecting directly to SMTP servers, your app sends messages to the proxy via
    REST API, and the proxy handles delivery with retry, rate limiting, and reporting.
@@ -20,10 +20,11 @@ General
    - **Priority queuing**: Urgent messages are sent first
 
 **What Python versions are supported?**
-   Python 3.10 and later.
+   Python 3.11 and later.
 
 **What database does it use?**
-   SQLite (via aiosqlite) or PostgreSQL. The database stores messages, accounts,
+   SQLite or PostgreSQL through Asqueel, with transactions run in Kajenn
+   worker threads. The database stores messages, accounts,
    tenants, and send logs. Use a persistent volume in production.
 
 Configuration
@@ -125,7 +126,7 @@ Attachments
    See :doc:`usage` for all cache options.
 
 **How do I handle large attachments?**
-   Install the large-files extra: ``pip install genro-mail-proxy[large-files]``.
+   Install the large-files extra: ``pip install -e ".[large-files]"``.
    Configure ``large_file_config`` on the tenant with ``storage_url`` pointing
    to S3, GCS, Azure, or a local filesystem. Set ``action: "rewrite"`` to
    automatically upload and replace with download links.
@@ -239,7 +240,7 @@ Troubleshooting
    - Reduce ``batch_size_per_account``
    - Increase ``send_loop_interval``
    - Use a single instance instead of multiple
-   - Switch to PostgreSQL: ``pip install genro-mail-proxy[postgresql]``
+   - Switch to PostgreSQL: ``pip install -e ".[postgresql]"``
 
 **Memory usage is high**
    Large attachments are held in memory. Mitigations:

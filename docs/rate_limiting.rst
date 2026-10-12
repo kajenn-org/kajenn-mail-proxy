@@ -2,7 +2,7 @@
 Rate Limiting
 =============
 
-genro-mail-proxy provides per-account rate limiting to prevent exceeding
+kajenn-mail-proxy provides per-account rate limiting to prevent exceeding
 SMTP provider limits and ensure fair resource distribution across tenants.
 
 How It Works
@@ -66,7 +66,7 @@ updating an account:
 
 .. code-block:: bash
 
-   curl -X POST http://localhost:8000/account \
+   curl -X POST http://localhost:8000/mailproxy/v1/account \
      -H "X-API-Token: $TOKEN" \
      -H "Content-Type: application/json" \
      -d '{
@@ -86,9 +86,9 @@ updating an account:
 
 .. code-block:: python
 
-   from mail_proxy.client import MailProxyClient
+   from kajenn_mail_proxy.client import MailProxyClient
 
-   client = MailProxyClient("http://localhost:8000", token="your-token")
+   client = MailProxyClient("http://localhost:8000/mailproxy/v1", token="your-token")
    client.accounts.create(
        id="primary-smtp",
        tenant_id="acme",
@@ -120,7 +120,7 @@ The dispatcher automatically picks up deferred messages when their time arrives.
 .. code-block:: bash
 
    # List messages with deferred_ts set
-   curl "http://localhost:8000/messages?tenant_id=acme" \
+   curl "http://localhost:8000/mailproxy/v1/messages?tenant_id=acme" \
      -H "X-API-Token: $TOKEN" | jq '.messages[] | select(.deferred_ts != null)'
 
 
@@ -227,7 +227,7 @@ To disable rate limiting for an account, either:
 .. code-block:: bash
 
    # Create account without limits
-   curl -X POST http://localhost:8000/account \
+   curl -X POST http://localhost:8000/mailproxy/v1/account \
      -H "X-API-Token: $TOKEN" \
      -H "Content-Type: application/json" \
      -d '{

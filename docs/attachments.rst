@@ -2,7 +2,7 @@
 Attachments
 ===========
 
-This guide covers all aspects of handling email attachments in genro-mail-proxy:
+This guide covers all aspects of handling email attachments in kajenn-mail-proxy:
 fetching from various sources, caching for deduplication, and handling large files.
 
 Attachment specification
@@ -271,7 +271,7 @@ Installation
 
 .. code-block:: bash
 
-   pip install genro-mail-proxy[large-files]
+   pip install -e ".[large-files]"
 
 Configuration
 ~~~~~~~~~~~~~

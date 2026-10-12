@@ -7,7 +7,9 @@ Configuration
 
 Configuration is managed via the ``mail-proxy`` CLI. Each instance stores its
 settings in a SQLite database at ``~/.mail-proxy/<name>/mail_service.db``.
-PostgreSQL is also supported for high-concurrency deployments.
+PostgreSQL is also supported. Asqueel persistence runs complete synchronous
+transactions through Kajenn's ``server.run_sync``; CLI-only operations use
+``asyncio.to_thread`` and close persistence in ``finally``. SMTP stays async.
 
 CLI Setup (recommended)
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -43,9 +45,9 @@ For containerized deployments, use environment variables prefixed with ``GMP_``:
    docker run -p 8000:8000 \
      -e GMP_API_TOKEN=your-secret-token \
      -e GMP_DB_PATH=/data/mail_service.db \
-     -e GMP_SCHEDULER_ACTIVE=true \
+     -e GMP_START_ACTIVE=true \
      -v mail-data:/data \
-     genro-mail-proxy
+     kajenn-mail-proxy
 
 Available environment variables::
 
@@ -53,20 +55,24 @@ Available environment variables::
   GMP_DB_PATH                             - Database connection string (SQLite path or postgresql://...)
   GMP_HOST                                - Server host (default: 0.0.0.0)
   GMP_PORT                                - Server port (default: 8000)
-  GMP_SCHEDULER_ACTIVE                    - Enable scheduler (default: false)
+  GMP_START_ACTIVE                        - Enable SMTP dispatch (default: true)
   GMP_API_TOKEN                           - API authentication token
   GMP_SEND_LOOP_INTERVAL                  - Send loop interval in seconds
   GMP_TEST_MODE                           - Enable test mode (default: false)
   GMP_DEFAULT_PRIORITY                    - Default message priority (default: 2)
-  GMP_DELIVERY_REPORT_RETENTION_SECONDS   - Retention time for delivery reports (default: 604800)
+  GMP_REPORT_RETENTION_SECONDS             - Retention time for delivery reports (default: 604800)
   GMP_BATCH_SIZE_PER_ACCOUNT              - Batch size per account (default: 50)
   GMP_LOG_DELIVERY_ACTIVITY               - Log delivery activity (default: false)
   GMP_CACHE_DISK_DIR                      - Directory for disk cache (optional)
   GMP_CACHE_MEMORY_MAX_MB                 - Max memory cache size (default: 50)
-  GMP_CACHE_DISK_MAX_MB                   - Max disk cache size (default: 500)
+  GMP_CACHE_DISK_MAX_MB                    - Max disk cache size (default: 500)
 
 Docker Workflow
 ~~~~~~~~~~~~~~~
+
+The compatibility REST base URL is ``http://localhost:8000/mailproxy/v1``.
+All relative endpoint names below use this base; typed operations are under
+``/mailproxy/api`` and MCP is under ``/mailproxy/mcp``.
 
 In Docker deployments, the container exposes the REST API. Tenant and account
 configuration is done dynamically via API calls from your application:
@@ -74,7 +80,7 @@ configuration is done dynamically via API calls from your application:
 .. code-block:: bash
 
    # Create a tenant
-   curl -X POST http://localhost:8000/tenant \
+   curl -X POST http://localhost:8000/mailproxy/v1/tenant \
      -H "Content-Type: application/json" \
      -H "X-API-Token: your-token" \
      -d '{
@@ -86,7 +92,7 @@ configuration is done dynamically via API calls from your application:
      }'
 
    # Create an SMTP account for the tenant
-   curl -X POST http://localhost:8000/account \
+   curl -X POST http://localhost:8000/mailproxy/v1/account \
      -H "Content-Type: application/json" \
      -H "X-API-Token: your-token" \
      -d '{
@@ -105,8 +111,15 @@ manages tenant and account lifecycle via these API endpoints.
 API Token
 ~~~~~~~~~
 
-``api_token`` secures the FastAPI endpoints: every HTTP request must include
-``X-API-Token: <value>``. Generate or view the token with:
+Set ``GMP_API_TOKEN`` explicitly for the standalone factory. Protected REST
+and MCP operations accept ``X-API-Token: <value>`` with an admin or tenant token;
+tenant callers can access only their own resources. Health is public. Without
+a configured admin token, anonymous callers remain anonymous. Legacy anonymous
+administration requires the explicit ``allow_anonymous_admin=True`` factory
+option. Trusted Kajenn admin identities can receive application admin rights.
+The factory does not implicitly load the admin token from persistent settings.
+
+CLI-managed instance tokens can be viewed or regenerated with:
 
 .. code-block:: bash
 
@@ -188,22 +201,23 @@ For high-concurrency deployments, use PostgreSQL instead of SQLite:
 
 .. code-block:: bash
 
-   pip install genro-mail-proxy[postgresql]
+   pip install -e ".[postgresql]"
 
 Configure via environment variable:
 
 .. code-block:: bash
 
-   export GMP_DATABASE_URL="postgresql://user:pass@localhost:5432/mailproxy"
+   export GMP_DB_PATH="postgresql://user:pass@localhost:5432/mailproxy"
 
-Or via CLI when starting an instance:
+Start the standalone factory with that environment:
 
 .. code-block:: bash
 
-   mail-proxy start myserver --database-url "postgresql://..."
+   uvicorn kajenn_mail_proxy.server:build_server --factory --host 0.0.0.0 --port 8000
 
-The PostgreSQL adapter uses psycopg3 with connection pooling for efficient
-concurrent access.
+Asqueel uses its PostgreSQL driver and Kajenn's worker pool; transactions and
+connection cleanup stay on the worker that owns the unit of work. PostgreSQL
+does not imply multi-process dispatcher coordination.
 
 Large File Handling
 -------------------
@@ -216,7 +230,7 @@ issues and SMTP size limits.
 
 .. code-block:: bash
 
-   pip install genro-mail-proxy[large-files]
+   pip install -e ".[large-files]"
 
 **Configuration (per-tenant):**
 
@@ -304,7 +318,7 @@ Test mode
 ---------
 
 Unit tests and maintenance scripts can instantiate
-``mail_proxy.core.MailProxy`` with ``test_mode=True`` (or set
+``kajenn_mail_proxy.core.MailProxy`` with ``test_mode=True`` (or set
 ``GMP_TEST_MODE=true``). In this mode the dispatcher and reporting tasks are
 still created, but their send interval is stretched to infinity so they wait
 for an explicit wake-up. Calling ``/commands/run-now`` (or
@@ -321,7 +335,7 @@ Add account:
 
 .. code-block:: bash
 
-   curl -X POST http://localhost:8000/account \
+   curl -X POST http://localhost:8000/mailproxy/v1/account \
         -H "Content-Type: application/json" \
         -H "X-API-Token: my-secret-token" \
      -d '{
@@ -337,13 +351,15 @@ Python (httpx)
 
    import httpx
 
-   client = httpx.Client(base_url="http://localhost:8000",
+   client = httpx.Client(base_url="http://localhost:8000/mailproxy/v1",
                          headers={"X-API-Token": "my-secret-token"})
 
    r = client.post("/commands/add-messages", json={
        "messages": [
            {
                "id": "MSG-001",
+               "tenant_id": "acme",
+               "account_id": "smtp1",
                "from": "sender@example.com",
                "to": ["dest@example.com"],
                "subject": "Hi",

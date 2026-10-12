@@ -90,7 +90,7 @@ all = [
 
 [project.urls]
 Homepage = "https://github.com/kajenn-org/kajenn-mail-proxy"
-Documentation = "https://github.com/kajenn-org/kajenn-mail-proxy/tree/main/docs"
+Documentation = "https://kajenn-mail-proxy.readthedocs.io/en/latest/"
 Repository = "https://github.com/kajenn-org/kajenn-mail-proxy"
 Issues = "https://github.com/kajenn-org/kajenn-mail-proxy/issues"
 

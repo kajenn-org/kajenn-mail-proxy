@@ -2,24 +2,24 @@
 Monitoring
 ==========
 
-genro-mail-proxy exposes Prometheus metrics and health endpoints for
+kajenn-mail-proxy exposes Prometheus metrics and health endpoints for
 comprehensive monitoring and alerting.
 
 Prometheus Metrics
 ------------------
 
-The ``/metrics`` endpoint returns metrics in Prometheus text exposition format.
+The ``/mailproxy/v1/metrics`` endpoint returns metrics in Prometheus text exposition format.
 **No authentication required** for this endpoint—secure it via firewall rules
 or reverse proxy.
 
 .. code-block:: bash
 
-   curl http://localhost:8000/metrics
+   curl http://localhost:8000/mailproxy/v1/metrics
 
 Available Metrics
 ~~~~~~~~~~~~~~~~~
 
-All metrics use the ``gmp_`` prefix (genro-mail-proxy):
+All metrics use the ``gmp_`` prefix (kajenn-mail-proxy):
 
 .. list-table::
    :header-rows: 1
@@ -87,7 +87,7 @@ Add the mail-proxy to your Prometheus scrape configuration:
        scrape_interval: 15s
        static_configs:
          - targets: ['mail-proxy:8000']
-       metrics_path: /metrics
+       metrics_path: /mailproxy/v1/metrics
 
 For Kubernetes with service discovery:
 
@@ -204,32 +204,32 @@ Health Endpoints
 
 Two health endpoints are available:
 
-``GET /health``
-~~~~~~~~~~~~~~~
+``GET /mailproxy/health``
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Lightweight health check. Returns 200 OK if the service is running.
 **No authentication required**.
 
 .. code-block:: bash
 
-   curl http://localhost:8000/health
+   curl http://localhost:8000/mailproxy/health
 
 Response:
 
 .. code-block:: json
 
-   {"ok": true}
+   {"status": "ok"}
 
 Use this for load balancer health checks and Kubernetes liveness probes.
 
-``GET /status``
-~~~~~~~~~~~~~~~
+``GET /mailproxy/v1/status``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Detailed status including scheduler state. **Requires authentication**.
 
 .. code-block:: bash
 
-   curl http://localhost:8000/status -H "X-API-Token: $TOKEN"
+   curl http://localhost:8000/mailproxy/v1/status -H "X-API-Token: $TOKEN"
 
 Response:
 
@@ -259,13 +259,13 @@ Configure probes in your deployment:
            - name: mail-proxy
              livenessProbe:
                httpGet:
-                 path: /health
+                 path: /mailproxy/health
                  port: 8000
                initialDelaySeconds: 10
                periodSeconds: 10
              readinessProbe:
                httpGet:
-                 path: /health
+                 path: /mailproxy/health
                  port: 8000
                initialDelaySeconds: 5
                periodSeconds: 5
@@ -278,9 +278,9 @@ Docker Compose Health Check
 
    services:
      mail-proxy:
-       image: genro-mail-proxy
+       image: kajenn-mail-proxy
        healthcheck:
-         test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+         test: ["CMD", "curl", "-f", "http://localhost:8000/mailproxy/health"]
          interval: 30s
          timeout: 10s
          retries: 3
@@ -300,8 +300,7 @@ Configure log level via environment:
 
 .. code-block:: bash
 
-   export LOG_LEVEL=DEBUG
-   uvicorn mail_proxy.server:app --host 0.0.0.0
+   uvicorn kajenn_mail_proxy.server:build_server --factory --host 0.0.0.0 --log-level debug
 
 Or in Docker:
 

@@ -1,7 +1,7 @@
 Example Client
 ==============
 
-The ``example_client.py`` demonstrates how to integrate your application with genro-mail-proxy.
+The ``example_client.py`` demonstrates how to integrate your application with kajenn-mail-proxy.
 
 Overview
 --------
@@ -49,7 +49,7 @@ Edit ``example_config.ini``:
 .. code-block:: ini
 
    [mail_service]
-   url = http://localhost:8000
+   url = http://localhost:8000/mailproxy/v1
    api_token = your-secret-token
 
    [test]
@@ -87,7 +87,7 @@ Response:
    }
 
 Send Multiple Test Emails
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: bash
 
@@ -102,7 +102,7 @@ Custom Subject Line
    curl -X POST "http://localhost:8081/send-test-email?subject=Integration%20Test"
 
 View Message Statistics
-^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: bash
 
@@ -175,7 +175,7 @@ Integration Flow
             │
             ▼
    ┌──────────────────┐
-   │ genro-mail-proxy │────────► SMTP Server
+   │ kajenn-mail-proxy │────────► SMTP Server
    └────────┬─────────┘
             │
             │ 3. POST /delivery-report (to your app)
@@ -222,7 +222,7 @@ The example client maintains this schema:
    CREATE INDEX idx_status ON outbound_emails(status);
 
 Integration Pattern Explained
-------------------------------
+-----------------------------
 
 Why This Pattern?
 ^^^^^^^^^^^^^^^^^
@@ -294,7 +294,7 @@ Code Walkthrough
 ----------------
 
 Step 1: Create Message Locally
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
 
@@ -316,7 +316,7 @@ Step 1: Create Message Locally
 **Key point**: Message is safe in your database before any network calls.
 
 Step 2: Submit to Mail Service
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
 
@@ -342,7 +342,7 @@ Step 2: Submit to Mail Service
 **Key point**: Non-blocking submission, local DB tracks submission timestamp.
 
 Step 3: Trigger Immediate Dispatch
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
 
@@ -359,7 +359,7 @@ Step 3: Trigger Immediate Dispatch
 **Key point**: This is a **best-effort optimization**, not required for correctness.
 
 Step 4: Receive Delivery Reports
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
 
@@ -396,7 +396,7 @@ Endpoints
 ^^^^^^^^^
 
 ``POST /send-test-email``
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Generate and send test email(s).
 
@@ -464,7 +464,7 @@ Get message statistics.
    }
 
 ``POST /email/mailproxy/mp_endpoint/proxy_sync``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Receive delivery reports from mail service (internal endpoint).
 
@@ -502,7 +502,7 @@ End-to-End Test
    .. code-block:: bash
 
       # In terminal 1
-      cd /path/to/genro-mail-proxy
+      cd /path/to/kajenn-mail-proxy
       python3 main.py
 
 2. **Start example client**:
@@ -527,7 +527,7 @@ End-to-End Test
       curl http://localhost:8081/stats
 
       # Check mail service status
-      curl http://localhost:8000/status
+      curl http://localhost:8000/mailproxy/v1/status
 
 5. **Verify email**:
 
@@ -565,7 +565,7 @@ Client Won't Start
    pip install fastapi uvicorn aiohttp
 
 Mail Service Connection Refused
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Error**: ``Mail service unavailable: Cannot connect to host localhost:8000``
 
@@ -575,14 +575,14 @@ Mail Service Connection Refused
 
    .. code-block:: bash
 
-      curl http://localhost:8000/status
+      curl http://localhost:8000/mailproxy/v1/status
 
 2. Check ``example_config.ini`` URL is correct:
 
    .. code-block:: ini
 
       [mail_service]
-      url = http://localhost:8000  # Match mail service port
+      url = http://localhost:8000/mailproxy/v1  # Match mail service port
 
 Authentication Failed
 ^^^^^^^^^^^^^^^^^^^^^
@@ -603,7 +603,7 @@ Ensure ``example_config.ini`` token matches the mail service token:
    mail-proxy myserver token
 
 Messages Stuck in "submitted" State
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 **Symptoms**: ``curl http://localhost:8081/stats`` shows ``submitted > 0`` for extended period.
 
@@ -613,19 +613,19 @@ Messages Stuck in "submitted" State
 
    .. code-block:: bash
 
-      curl http://localhost:8000/status
+      curl http://localhost:8000/mailproxy/v1/status
 
 2. Check for delivery errors:
 
    .. code-block:: bash
 
-      curl http://localhost:8000/messages | jq '.messages[] | select(.error_ts != null)'
+      curl http://localhost:8000/mailproxy/v1/messages | jq '.messages[] | select(.error_ts != null)'
 
 3. Check SMTP account configuration:
 
    .. code-block:: bash
 
-      curl http://localhost:8000/accounts
+      curl http://localhost:8000/mailproxy/v1/accounts
 
 **Common causes**:
 
@@ -639,7 +639,7 @@ Messages Stuck in "submitted" State
 See the :doc:`faq` for common issues and solutions.
 
 Adapting for Your Application
-------------------------------
+-----------------------------
 
 To integrate this pattern into your application:
 

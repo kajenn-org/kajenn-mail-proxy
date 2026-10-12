@@ -2,13 +2,13 @@
 Flask Integration
 =================
 
-This guide shows how to integrate genro-mail-proxy with a Flask application.
+This guide shows how to integrate kajenn-mail-proxy with a Flask application.
 
 Flask has no built-in email system. The common solution is Flask-Mail, which
 is synchronous and blocks the request thread during SMTP delivery. For async
 delivery, you typically need Celery + Redis, which adds operational complexity.
 
-genro-mail-proxy provides an alternative: a dedicated email service that handles
+kajenn-mail-proxy provides an alternative: a dedicated email service that handles
 queuing, retry, and delivery reports. It acts as a specialized message broker
 for email, with built-in SMTP handling and delivery tracking.
 
@@ -22,7 +22,7 @@ for email, with built-in SMTP handling and delivery tracking.
 When to use the proxy with Flask
 --------------------------------
 
-Consider genro-mail-proxy when:
+Consider kajenn-mail-proxy when:
 
 - You don't want to introduce Celery just for email
 - You need delivery reports with automatic callback
@@ -44,7 +44,7 @@ Comparison with Flask-Mail + Celery
 
    * - Feature
      - Flask-Mail + Celery
-     - genro-mail-proxy
+     - kajenn-mail-proxy
    * - Dependencies
      - Redis/RabbitMQ + Celery worker
      - Only the proxy
@@ -83,7 +83,7 @@ Configuration
    # config.py
 
    class Config:
-       MAIL_PROXY_URL = "http://localhost:8000"
+       MAIL_PROXY_URL = "http://localhost:8000/mailproxy/v1"
        MAIL_PROXY_TOKEN = "your-api-token"
        MAIL_PROXY_ACCOUNT = "default"
 
@@ -93,7 +93,7 @@ Client module
 .. code-block:: python
 
    # mail_proxy.py
-   """Flask client for genro-mail-proxy."""
+   """Flask client for kajenn-mail-proxy."""
 
    import uuid
    import requests
@@ -101,7 +101,7 @@ Client module
 
 
    class MailProxy:
-       """Client for sending emails through genro-mail-proxy."""
+       """Client for sending emails through kajenn-mail-proxy."""
 
        def _config(self, key):
            return current_app.config.get(key)

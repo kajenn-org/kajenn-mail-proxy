@@ -1,8 +1,15 @@
 # kajenn-mail-proxy
 
+[![Documentation](https://readthedocs.org/projects/kajenn-mail-proxy/badge/?version=latest)](https://kajenn-mail-proxy.readthedocs.io/en/latest/)
+[![Tests](https://github.com/kajenn-org/kajenn-mail-proxy/actions/workflows/tests.yml/badge.svg)](https://github.com/kajenn-org/kajenn-mail-proxy/actions/workflows/tests.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
 An asynchronous email dispatcher built as a Kajenn `McpOpenApiApplication`.
 Applications enqueue messages through REST or MCP; background workers deliver
 email over SMTP and report results through HTTP callbacks.
+
+[Read the documentation](https://kajenn-mail-proxy.readthedocs.io/en/latest/) for
+installation, configuration, API reference and deployment guidance.
 
 ## Features
 
@@ -147,11 +154,11 @@ pytest tests/unit tests/local_e2e
 pytest tests/unit tests/local_e2e -m "not pec and not fullstack"
 ```
 
-At the migration checkpoint, 754 unit/local tests and 19 PostgreSQL tests
-passed, including three Kajenn/Asqueel lifecycle tests in the unit suite.
-Docker validation is still in progress; these counts do not establish that it
-passed. External SMTP/IMAP, Docker and PostgreSQL checks require their corresponding
-services. PEC tests are excluded by default; use `pytest -m pec` when configured.
+At the migration checkpoint, 761 unit/local tests, 19 PostgreSQL tests and
+196 Docker fullstack tests passed. Six fullstack tests remain expected failures
+for the existing bounce correlation/reporting issue (#103 in the original
+project). External SMTP/IMAP, Docker and PostgreSQL checks require their
+corresponding services. PEC tests are excluded by default; use `pytest -m pec` when configured.
 See [tests/README.md](tests/README.md) and the migration baseline for environment
 requirements and known limitations.
 

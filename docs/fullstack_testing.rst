@@ -3,7 +3,7 @@ Fullstack Integration Testing
 =============================
 
 This document describes the comprehensive fullstack testing infrastructure for
-genro-mail-proxy. These tests validate every aspect of the system in an environment
+kajenn-mail-proxy. These tests validate every aspect of the system in an environment
 that closely simulates production.
 
 .. contents:: Table of Contents
@@ -81,7 +81,7 @@ Prerequisites
 ~~~~~~~~~~~~~
 
 - Docker and Docker Compose
-- Python 3.10+ with pytest
+- Python 3.11+ with pytest
 - At least 8GB RAM
 
 Running Tests
@@ -90,15 +90,15 @@ Running Tests
 .. code-block:: bash
 
    # Start infrastructure
-   docker compose -f tests/docker/docker-compose.fulltest.yml up -d
+   docker compose -f tests/docker/docker-compose.fulltest.yml --profile bounce up -d
 
    # Start mailproxy locally (in another terminal)
    GMP_DB_PATH=postgresql://mailproxy:testpassword@localhost:5433/mailproxy \
    GMP_API_TOKEN=test-api-token \
-   uvicorn mail_proxy.server:app --host 0.0.0.0 --port 8000 --reload
+   uvicorn kajenn_mail_proxy.server:build_server --factory --host 0.0.0.0 --port 8000 --reload
 
-   # Run all tests
-   pytest tests/fullstack/ -v
+   # Run all fullstack tests, including PEC
+   pytest tests/fullstack/ -m fullstack -v
 
    # Run specific group
    pytest tests/fullstack/40_operations/ -v
@@ -306,7 +306,7 @@ Service URLs and constants are defined in ``tests/fullstack/helpers.py``:
 .. code-block:: python
 
    # Mail Proxy
-   MAILPROXY_URL = "http://localhost:8000"
+   MAILPROXY_URL = "http://localhost:8000/mailproxy/v1"
    MAILPROXY_TOKEN = "test-api-token"
 
    # MailHog

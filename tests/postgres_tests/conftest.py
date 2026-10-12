@@ -4,7 +4,6 @@ import asyncio
 import os
 import subprocess
 
-import psycopg
 import pytest
 import pytest_asyncio
 
@@ -26,6 +25,8 @@ def pg_container():
 
 
 def reset_schema(dsn):
+    import psycopg
+
     with psycopg.connect(dsn, autocommit=True) as connection:
         connection.execute("DROP SCHEMA public CASCADE")
         connection.execute("CREATE SCHEMA public")

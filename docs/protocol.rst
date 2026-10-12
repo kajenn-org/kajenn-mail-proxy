@@ -1,17 +1,17 @@
 Protocols and APIs
 ==================
 
-This page consolidates the information required to integrate with genro-mail-proxy,
+This page consolidates the information required to integrate with kajenn-mail-proxy,
 covering both the REST command surface and the outbound
 ``proxy_sync`` communication channel.
 
 Authentication and base URL
 ---------------------------
 
-All REST calls are rooted at ``http://<host>:<port>`` (by default
-``http://127.0.0.1:8000``). When an ``api_token`` is configured the client
-**must** send the header ``X-API-Token: <value>`` or the request will be
-rejected with ``401``.
+All REST calls are rooted at ``http://<host>:<port>/mailproxy/v1`` (by default
+``http://127.0.0.1:8000/mailproxy/v1``). Anonymous callers do not receive
+admin privileges. Protected operations require ``X-API-Token: <value>``
+(or a trusted Kajenn identity); public health and metrics remain accessible.
 
 Every command returns a JSON document with at least the keys ``ok`` and,
 on failure, ``error``. Additional fields depend on the specific endpoint.
@@ -44,7 +44,7 @@ REST command surface
      - ``{"ok": true, "active": <bool>}``
    * - ``POST /account`` / ``GET /accounts`` / ``DELETE /account/{id}``
      - Manage SMTP account definitions
-     - :class:`mail_proxy.http_schema.AccountPayload`
+     - :class:`kajenn_mail_proxy.http_schema.AccountPayload`
      - Confirmation plus account list
    * - ``POST /commands/delete-messages``
      - Remove messages from the queue
@@ -92,7 +92,7 @@ Message batch payload
      "default_priority": 1
    }
 
-Each entry mirrors :class:`mail_proxy.http_schema.MessagePayload`. Key fields:
+Each entry mirrors :class:`kajenn_mail_proxy.http_schema.MessagePayload`. Key fields:
 
 .. list-table::
    :header-rows: 1

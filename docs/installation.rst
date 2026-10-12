@@ -2,14 +2,30 @@
 Installation
 ============
 
-PyPI
-----
+Source installation
+-------------------
+
+Install the published source checkout with Python 3.11 or newer:
 
 .. code-block:: bash
 
-   pip install genro-mail-proxy
+   git clone https://github.com/kajenn-org/kajenn-mail-proxy.git
+   cd kajenn-mail-proxy
+   python -m venv .venv
+   source .venv/bin/activate
+   pip install -e ".[dev]"
+   export GMP_API_TOKEN=replace-with-a-secret
+   export GMP_DB_PATH=./mail_service.db
+   uvicorn kajenn_mail_proxy.server:build_server --factory --host 0.0.0.0 --port 8000
 
-This installs the ``mail-proxy`` CLI command.
+This installs the ``mail-proxy`` CLI command. Once a PyPI release is available,
+``pip install kajenn-mail-proxy`` can be used instead; source installation is
+the confirmed method for this migration.
+
+Kajenn owns application startup/shutdown and registers the Asqueel database as
+``mail``. SQLite uses the existing ``main`` file and PostgreSQL uses ``public``;
+database transactions run synchronously in Kajenn's worker pool. Importing the
+server module does not open a database or create a global engine.
 
 Docker
 ------
@@ -18,8 +34,8 @@ Build and run:
 
 .. code-block:: bash
 
-   docker build -t genro-mail-proxy .
-   docker run -p 8000:8000 -v mail-data:/data genro-mail-proxy
+   docker build -t kajenn-mail-proxy .
+   docker run -p 8000:8000 -e GMP_API_TOKEN=replace-with-a-secret -v mail-data:/data kajenn-mail-proxy
 
 Environment variables:
 
@@ -53,8 +69,9 @@ The default ``docker-compose.yml`` includes PostgreSQL:
 
      mailservice:
        build: .
-       image: genro-mail-proxy:latest
+       image: kajenn-mail-proxy:latest
        environment:
+         - GMP_API_TOKEN=${GMP_API_TOKEN:?set GMP_API_TOKEN}
          - GMP_DB_PATH=postgresql://mailproxy:${POSTGRES_PASSWORD:-changeme}@db:5432/mailproxy
        ports:
          - "8000:8000"
@@ -67,6 +84,9 @@ The default ``docker-compose.yml`` includes PostgreSQL:
      pgdata:
 
 .. code-block:: bash
+
+   # Configure the API token before starting
+   export GMP_API_TOKEN=replace-with-a-secret
 
    # Start with default password
    docker compose up -d
@@ -85,8 +105,9 @@ For simpler deployments using SQLite:
    services:
      mailservice:
        build: .
-       image: genro-mail-proxy:latest
+       image: kajenn-mail-proxy:latest
        environment:
+         - GMP_API_TOKEN=${GMP_API_TOKEN:?set GMP_API_TOKEN}
          - GMP_DB_PATH=/data/mail_service.db
        ports:
          - "8000:8000"
@@ -107,15 +128,15 @@ Local Development
 .. code-block:: bash
 
    # Clone and install in development mode
-   git clone https://github.com/softwell/genro-mail-proxy.git
-   cd genro-mail-proxy
+   git clone https://github.com/kajenn-org/kajenn-mail-proxy.git
+   cd kajenn-mail-proxy
    pip install -e ".[dev]"
 
    # Run tests
    pytest
 
    # Start the server
-   mail-proxy start myserver
+   GMP_API_TOKEN=replace-with-a-secret uvicorn kajenn_mail_proxy.server:build_server --factory
 
 Network Requirements
 --------------------
@@ -172,7 +193,7 @@ Deployment
      labels:
        app: mail-proxy
    spec:
-     replicas: 1  # Use 1 replica with SQLite, multiple with PostgreSQL
+     replicas: 1  # Multi-process queue coordination is not guaranteed
      selector:
        matchLabels:
          app: mail-proxy
@@ -183,11 +204,11 @@ Deployment
          annotations:
            prometheus.io/scrape: "true"
            prometheus.io/port: "8000"
-           prometheus.io/path: "/metrics"
+           prometheus.io/path: "/mailproxy/v1/metrics"
        spec:
          containers:
          - name: mail-proxy
-           image: genro-mail-proxy:latest
+           image: kajenn-mail-proxy:latest
            ports:
            - containerPort: 8000
              name: http
@@ -205,13 +226,13 @@ Deployment
                cpu: "500m"
            livenessProbe:
              httpGet:
-               path: /health
+               path: /mailproxy/health
                port: 8000
              initialDelaySeconds: 10
              periodSeconds: 30
            readinessProbe:
              httpGet:
-               path: /health
+               path: /mailproxy/health
                port: 8000
              initialDelaySeconds: 5
              periodSeconds: 10
@@ -298,7 +319,8 @@ If using SQLite instead of PostgreSQL:
 .. warning::
 
    SQLite does not support concurrent writes from multiple pods.
-   Use ``replicas: 1`` with SQLite, or use PostgreSQL for multi-replica deployments.
+   Use ``replicas: 1`` for the dispatcher. PostgreSQL support does not establish
+   multi-process queue coordination or exactly-once delivery.
 
 PostgreSQL with Helm (recommended)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -320,32 +342,12 @@ Then update the secret:
 
    GMP_DB_PATH: "postgresql://mailproxy:changeme@postgres-postgresql:5432/mailproxy"
 
-Horizontal Pod Autoscaler (PostgreSQL only)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Scaling limits
+~~~~~~~~~~~~~~
 
-With PostgreSQL, you can scale horizontally:
-
-.. code-block:: yaml
-
-   # hpa.yaml
-   apiVersion: autoscaling/v2
-   kind: HorizontalPodAutoscaler
-   metadata:
-     name: mail-proxy
-   spec:
-     scaleTargetRef:
-       apiVersion: apps/v1
-       kind: Deployment
-       name: mail-proxy
-     minReplicas: 2
-     maxReplicas: 5
-     metrics:
-     - type: Resource
-       resource:
-         name: cpu
-         target:
-           type: Utilization
-           averageUtilization: 70
+Keep one dispatcher replica until multi-process claim and rate-limit semantics
+are explicitly designed and verified. A PostgreSQL database alone does not
+make concurrent dispatcher replicas safe.
 
 Apply all manifests
 ~~~~~~~~~~~~~~~~~~~

@@ -12,14 +12,18 @@ The service is composed of the following building blocks:
 * **MailProxy** – orchestrates scheduling, rate limiting, persistence and
   delivery.  It exposes a coroutine-based API (`handle_command`) used by the
   HTTP layer.
-* **REST API** – served by :mod:`mail_proxy.mail_proxy_application`, built on
-  genro-asgi and protected by the ``X-API-Token`` header. The routes live in
-  :mod:`mail_proxy.routers`, the request and response shapes in
-  :mod:`mail_proxy.http_schema`.
+* **REST/MCP API** – served by :mod:`kajenn_mail_proxy.mail_proxy_application`, built on
+  Kajenn ``McpOpenApiApplication`` and protected by the ``X-API-Token`` header. The routes live in
+  :mod:`kajenn_mail_proxy.routers`, the request and response shapes in
+  :mod:`kajenn_mail_proxy.http_schema`.
 * **AttachmentManager** – fetches attachments from multiple sources (HTTP endpoints,
   URLs, base64, filesystem) with optional MD5-based caching.
 * **MailProxyDb** – stores tenants, SMTP accounts, the unified ``messages`` table, and
-  send logs in SQLite or PostgreSQL.
+  send logs through synchronous Asqueel on SQLite or PostgreSQL. Kajenn registers
+  the runtime as ``mail``; complete database units execute in its worker pool
+  through ``server.run_sync``, including commit/rollback and connection cleanup
+  on the same thread. SMTP and HTTP callbacks remain asynchronous and do not
+  hold database transactions open.
 * **RateLimiter** – inspects send logs to determine whether a message needs to
   be deferred.
 * **SMTPPool** – maintains pooled SMTP connections with acquire/release semantics
@@ -28,15 +32,15 @@ The service is composed of the following building blocks:
   using MD5 hash as the key for content-addressable deduplication.
 * **LargeFileStorage** – optional module for uploading large attachments to
   external storage (S3, GCS, Azure, local filesystem) and replacing them with
-  download links. Requires ``pip install genro-mail-proxy[large-files]``.
-* **Metrics** – :class:`mail_proxy.prometheus.MailMetrics` exports
+  download links. Requires ``pip install -e ".[large-files]"``.
+* **Metrics** – :class:`kajenn_mail_proxy.prometheus.MailMetrics` exports
   Prometheus counters and gauges with the ``gmp_`` prefix.
 
 .. mermaid::
-   :caption: Logical architecture of genro-mail-proxy
+   :caption: Logical architecture of kajenn-mail-proxy
 
    graph TD
-     Client["REST Clients"] -->|JSON commands| API[FastAPI layer]
+     Client["REST Clients"] -->|JSON commands| API[Kajenn REST/MCP]
      API --> Core[MailProxy]
      Core --> DB[(SQLite/PostgreSQL<br/>tenants, accounts, messages)]
      Core --> RateLimiter[RateLimiter]
@@ -50,11 +54,20 @@ The service is composed of the following building blocks:
      Sync --> Upstream["Tenant servers"]
      Metrics --> Prometheus["Prometheus server"]
 
+The compatibility REST base is ``/mailproxy/v1``. Typed semantic operations
+live under ``/mailproxy/api`` and are also exposed as role-filtered MCP tools
+at ``/mailproxy/mcp``. Public liveness is ``/mailproxy/health``. Anonymous
+callers do not gain admin privileges when no admin token is configured.
+SQLite keeps the existing single-file ``main`` schema; PostgreSQL uses
+``public``. See the `migration procedure
+<https://github.com/kajenn-org/kajenn-mail-proxy/blob/main/docs/asqueel-migration.md>`_
+before upgrading an existing database.
+
 Request flow
 ------------
 
-1. A client issues ``/commands/add-messages`` with one or more payloads.  The
-   API dependency validates ``X-API-Token`` before dispatching to
+1. A client issues ``/mailproxy/v1/commands/add-messages`` with one or more payloads.  The
+   application validates ``X-API-Token`` before dispatching to
    :meth:`MailProxy.handle_command`.
 2. ``MailProxy`` validates each message (mandatory ``id``, sender, recipients,
    known account, etc.).  Accepted messages are written to the ``messages`` table
@@ -63,7 +76,7 @@ Request flow
 3. The SMTP dispatch loop repeatedly queries ``messages`` for entries lacking
    ``sent_ts``/``error_ts`` whose ``deferred_ts`` is in the past.  Rate limiting
    can reschedule the delivery by updating ``deferred_ts``.
-4. Delivery uses :mod:`aiosmtplib` via :class:`mail_proxy.smtp_pool.SMTPPool`
+4. Delivery uses :mod:`aiosmtplib` via :class:`kajenn_mail_proxy.smtp_pool.SMTPPool`
    so repeated sends within the same asyncio task can reuse the connection.
 5. Delivery results are buffered in the ``messages`` table (``sent_ts`` /
    ``error_ts`` / ``error``) and streamed to API consumers through
@@ -74,12 +87,12 @@ Request flow
 
    sequenceDiagram
      participant Client
-     participant API as FastAPI
+     participant API as Kajenn
      participant Core as MailProxy
      participant DB as SQLite/PostgreSQL
      participant SMTP as SMTP Server
 
-     Client->>API: POST /commands/add-messages
+     Client->>API: POST /mailproxy/v1/commands/add-messages
      API->>Core: handle_command("addMessages")
      Core->>DB: INSERT into messages
      loop Background SMTP loop
@@ -146,7 +159,7 @@ filesystem, a signed token URL is generated using ``public_base_url``.
 Attachment caching
 ------------------
 
-The :class:`mail_proxy.attachments.cache.TieredCache` provides two-level
+The :class:`kajenn_mail_proxy.attachments.cache.TieredCache` provides two-level
 caching for attachment content:
 
 * **Level 1 (Memory)**: Fast LRU cache with configurable TTL and size limit

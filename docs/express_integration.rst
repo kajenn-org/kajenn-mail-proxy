@@ -2,7 +2,7 @@
 Express.js Integration
 ======================
 
-This guide shows how to integrate genro-mail-proxy with an Express.js (Node.js)
+This guide shows how to integrate kajenn-mail-proxy with an Express.js (Node.js)
 application.
 
 The standard Node.js email library is Nodemailer. It works well for simple cases
@@ -16,13 +16,13 @@ but has limitations:
 For production use, you typically add Bull/BullMQ (Redis-based queue), which
 adds infrastructure complexity similar to Python's Celery.
 
-genro-mail-proxy provides queuing, retry, and delivery reports as a standalone
+kajenn-mail-proxy provides queuing, retry, and delivery reports as a standalone
 service, accessible via simple HTTP calls from any Node.js application.
 
 When to use the proxy with Express
 ----------------------------------
 
-Consider genro-mail-proxy when:
+Consider kajenn-mail-proxy when:
 
 - You don't want to introduce Redis + Bull just for email
 - You need delivery reports with automatic callback
@@ -44,7 +44,7 @@ Comparison with Nodemailer + Bull
 
    * - Feature
      - Nodemailer + Bull
-     - genro-mail-proxy
+     - kajenn-mail-proxy
    * - Dependencies
      - Redis + Bull worker
      - Only the proxy
@@ -79,7 +79,7 @@ Configuration
    // config.js
    module.exports = {
      mailProxy: {
-       url: process.env.MAIL_PROXY_URL || 'http://localhost:8000',
+       url: process.env.MAIL_PROXY_URL || 'http://localhost:8000/mailproxy/v1',
        token: process.env.MAIL_PROXY_TOKEN || 'your-api-token',
        accountId: process.env.MAIL_PROXY_ACCOUNT || 'default',
      },
@@ -314,7 +314,7 @@ TypeScript version
      private accountId: string;
 
      constructor() {
-       this.baseUrl = process.env.MAIL_PROXY_URL || 'http://localhost:8000';
+       this.baseUrl = process.env.MAIL_PROXY_URL || 'http://localhost:8000/mailproxy/v1';
        this.token = process.env.MAIL_PROXY_TOKEN || '';
        this.accountId = process.env.MAIL_PROXY_ACCOUNT || 'default';
      }
@@ -413,7 +413,7 @@ If you prefer not to use axios:
 
    class MailProxyClient {
      constructor() {
-       this.baseUrl = process.env.MAIL_PROXY_URL || 'http://localhost:8000';
+       this.baseUrl = process.env.MAIL_PROXY_URL || 'http://localhost:8000/mailproxy/v1';
        this.token = process.env.MAIL_PROXY_TOKEN || '';
        this.accountId = process.env.MAIL_PROXY_ACCOUNT || 'default';
      }

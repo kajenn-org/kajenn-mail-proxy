@@ -1,8 +1,9 @@
 # Copyright 2025 Softwell S.r.l.
 # Licensed under the Apache License, Version 2.0
 
-"""Sphinx configuration for Genro Mail Proxy documentation."""
+"""Sphinx configuration for Kajenn Mail Proxy documentation."""
 
+import os
 import sys
 from pathlib import Path
 
@@ -22,7 +23,7 @@ version = ".".join(release.split(".")[:2])
 
 # Project information
 project = "Kajenn Mail Proxy"
-copyright = "2025, Softwell S.r.l."
+copyright = "2025–2026, Softwell S.r.l."
 author = "Softwell S.r.l."
 
 # General configuration
@@ -85,6 +86,9 @@ html_theme_options = {
 html_static_path = ["_static"]
 html_css_files = []  # No custom CSS yet
 html_title = project
+html_baseurl = os.environ.get(
+    "READTHEDOCS_CANONICAL_URL", "https://kajenn-mail-proxy.readthedocs.io/en/latest/"
+)
 
 # HTML context (GitHub integration)
 html_context = {
@@ -116,7 +120,9 @@ napoleon_include_special_with_doc = True
 napoleon_use_admonition_for_examples = True
 napoleon_use_admonition_for_notes = True
 napoleon_use_admonition_for_references = False
-napoleon_use_ivar = False
+# Attribute prose belongs to the class docstring; autodoc's member directives
+# provide the single indexed Python target for each annotated/model/enum field.
+napoleon_use_ivar = True
 napoleon_use_param = True
 napoleon_use_rtype = True
 napoleon_preprocess_types = True
@@ -126,7 +132,6 @@ napoleon_attr_annotations = True
 # Intersphinx configuration
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
-    "fastapi": ("https://fastapi.tiangolo.com", None),
 }
 
 # Todo extension configuration
@@ -139,7 +144,7 @@ typehints_document_rtype = True
 
 # Linkcheck configuration
 linkcheck_anchors_ignore_for_url = [
-    r"https://github\.com/softwell/genro-mail-proxy/.*",  # All GitHub anchors
+    r"https://github\.com/kajenn-org/kajenn-mail-proxy/.*",  # All GitHub anchors
 ]
 linkcheck_ignore = [
     r"http://localhost:\d+",  # Local development URLs

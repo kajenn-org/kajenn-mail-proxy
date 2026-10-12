@@ -2,13 +2,13 @@
 Django Integration
 ==================
 
-This guide shows how to integrate genro-mail-proxy with a Django application,
+This guide shows how to integrate kajenn-mail-proxy with a Django application,
 and compares the approach with Celery-based alternatives.
 
 When to use the proxy with Django
 ---------------------------------
 
-Consider genro-mail-proxy when:
+Consider kajenn-mail-proxy when:
 
 - You don't want to introduce Celery just for email
 - You need delivery reports with automatic callback to your app
@@ -31,7 +31,7 @@ Comparison with Celery
 
    * - Feature
      - Celery + django-celery-email
-     - genro-mail-proxy
+     - kajenn-mail-proxy
    * - Dependencies
      - Redis/RabbitMQ + Celery worker
      - Only the proxy (SQLite internal)
@@ -84,7 +84,7 @@ Add to your Django settings:
 
    # settings.py
 
-   MAIL_PROXY_URL = "http://localhost:8000"
+   MAIL_PROXY_URL = "http://localhost:8000/mailproxy/v1"
    MAIL_PROXY_TOKEN = "your-api-token"
    MAIL_PROXY_ACCOUNT = "default"  # SMTP account ID in the proxy
 
@@ -96,7 +96,7 @@ Create a client module to interact with the proxy:
 .. code-block:: python
 
    # myapp/mail_proxy.py
-   """Django client for genro-mail-proxy."""
+   """Django client for kajenn-mail-proxy."""
 
    import uuid
    import httpx
@@ -104,7 +104,7 @@ Create a client module to interact with the proxy:
 
 
    class MailProxyClient:
-       """Client for sending emails through genro-mail-proxy."""
+       """Client for sending emails through kajenn-mail-proxy."""
 
        def __init__(self):
            self.base_url = settings.MAIL_PROXY_URL

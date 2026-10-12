@@ -2,7 +2,7 @@ Features
 ========
 
 This document provides a comprehensive list of all features implemented in
-genro-mail-proxy.
+kajenn-mail-proxy.
 
 Feature Matrix
 --------------
@@ -389,9 +389,9 @@ REST API
 
    * - Feature
      - Description
-   * - FastAPI Backend
-     - Modern async REST API with automatic OpenAPI documentation.
-       All operations exposed via HTTP endpoints.
+   * - Kajenn REST and MCP
+     - Typed application operations with OpenAPI documentation and selective
+       REST/MCP exposure through ``McpOpenApiApplication``.
    * - Token Authentication
      - API authentication via ``X-API-Token`` header.
        Supports global token and per-tenant tokens.
