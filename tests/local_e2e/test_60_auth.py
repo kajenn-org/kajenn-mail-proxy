@@ -22,7 +22,7 @@ The coverage check reads the ROUTER, not a source file. Two halves:
   ``V1_ENTRIES`` — adding a route breaks this and forces a table entry.
 
 What this can no longer see, and the FastAPI decorators could: the verb.
-genro-asgi resolves on the path alone, so the six routes sharing ``/tenant``
+kajenn resolves on the path alone, so the six routes sharing ``/tenant``
 are one router entry, and a seventh verb added inside that handler would not
 show up here. The verb dimension of the contract is asserted by the suites
 that call the routes (test_10 through test_50), not by this count.
@@ -34,8 +34,8 @@ from urllib.parse import urlsplit
 
 import pytest
 
-from mail_proxy.core import MailProxy
-from mail_proxy.mail_proxy_application import MailProxyApplication
+from kajenn_mail_proxy.core import MailProxy
+from kajenn_mail_proxy.mail_proxy_application import MailProxyApplication
 from tests import api_routes
 
 pytestmark = pytest.mark.asyncio
@@ -147,7 +147,7 @@ def _entry_paths(node, prefix=""):
 
 def _published_entries(router):
     """The route entries of the v1 branch, derived from the router."""
-    tree = router.nodes(_eager=True, auth_tags=ALL_TAGS)
+    tree = router.nodes(_eager=True, auth_tags=ALL_TAGS, channel_channel="rest")
     v1 = tree["routers"]["v1"]
     return set(_entry_paths(v1))
 
@@ -171,7 +171,7 @@ async def test_the_tables_cover_every_route_once(v1_router):
     )
 
     for label, _method, url, _body in OPEN_ROUTES + TOKEN_PROTECTED_ROUTES:
-        node = v1_router.node(_router_path(url), auth_tags=ALL_TAGS)
+        node = v1_router.node(_router_path(url), auth_tags=ALL_TAGS, channel_channel="rest")
         assert node.error is None, f"{label} names no live route: {node.error}"
 
 

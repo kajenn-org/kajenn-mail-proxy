@@ -9,13 +9,13 @@ Features:
     - Attachment fetching (HTTP endpoint, URL, base64, filesystem)
     - Delivery report callbacks to client applications
     - Prometheus metrics for monitoring
-    - genro-asgi REST API for control and message submission
+    - kajenn REST API for control and message submission
     - SQLite/PostgreSQL persistence
 
 Example::
 
-    from mail_proxy import MailProxy
-    from mail_proxy.mail_proxy_application import MailProxyApplication
+    from kajenn_mail_proxy import MailProxy
+    from kajenn_mail_proxy.mail_proxy_application import MailProxyApplication
 
     proxy = MailProxy(db_path="/data/mail.db")
     app = MailProxyApplication(core=proxy, api_token="secret")

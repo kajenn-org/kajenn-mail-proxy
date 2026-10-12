@@ -1,7 +1,7 @@
 # Copyright 2025 Softwell S.r.l.
 # Licensed under the Apache License, Version 2.0
 
-"""Phase-1 proof of the genro-asgi transport: MailProxyApplication over HTTP.
+"""Phase-1 proof of the kajenn transport: MailProxyApplication over HTTP.
 
 Implementation tests (they photograph the new transport layer, not the v1
 contract — that one is asserted by ``tests/local_e2e``). A probe subclass adds
@@ -21,11 +21,11 @@ from types import SimpleNamespace
 import pytest
 import pytest_asyncio
 import uvicorn
-from genro_asgi import AsgiServer
 from genro_routes import route
 
-from mail_proxy.core import MailProxy
-from mail_proxy.mail_proxy_application import ADMIN_TAG, TENANT_TAG, MailProxyApplication
+from kajenn_mail_proxy.core import MailProxy
+from kajenn_mail_proxy.server import build_server
+from kajenn_mail_proxy.mail_proxy_application import ADMIN_TAG, TENANT_TAG, MailProxyApplication
 
 httpx = pytest.importorskip("httpx")
 
@@ -59,8 +59,7 @@ def asgi_server(tmp_path_factory):
     """The probe app served by AsgiServer/uvicorn on a free port."""
     db_path = tmp_path_factory.mktemp("asgi") / "mail_proxy.db"
     core = MailProxy(db_path=str(db_path), start_active=True, test_mode=True)
-    app = ProbeApplication(core=core, api_token=ADMIN_TOKEN)
-    server = AsgiServer(applications=[app], middleware={"auth": False})
+    server = build_server(core=core, api_token=ADMIN_TOKEN, app_class=ProbeApplication)
 
     config = uvicorn.Config(server, host="127.0.0.1", port=0, log_level="warning")
     uv_server = uvicorn.Server(config)

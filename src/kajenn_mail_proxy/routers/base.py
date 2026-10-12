@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, TypeVar
 
-from genro_asgi.exceptions import HTTPBadRequest
+from kajenn.exceptions import HTTPBadRequest
 from genro_routes import RoutingClass
 from pydantic import BaseModel, ValidationError
 

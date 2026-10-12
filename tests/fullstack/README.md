@@ -1,6 +1,6 @@
 # Fullstack Integration Tests — the stress suite
 
-End-to-end tests that validate genro-mail-proxy against real services:
+End-to-end tests that validate kajenn-mail-proxy against real services:
 real SMTP delivery, attachments, bounce handling, rate limiting, and the
 outbound client protocol, on the Docker compose stack. Every test here
 carries the `fullstack` marker (deselect with `-m "not fullstack"`).

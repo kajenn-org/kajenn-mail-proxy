@@ -1,6 +1,6 @@
 # Architecture Decisions
 
-This document records key architectural decisions for genro-mail-proxy.
+This document records key architectural decisions for kajenn-mail-proxy.
 
 ## ADR-001: Mixin Pattern for Core Module Organization
 
@@ -22,7 +22,7 @@ This document records key architectural decisions for genro-mail-proxy.
 **Rationale**:
 - Mixins keep all functionality in a single MailProxy class (no delegation overhead)
 - Each file is focused and under 500 lines
-- Import `from mail_proxy.core import MailProxy` continues to work
+- Import `from kajenn_mail_proxy.core import MailProxy` continues to work
 - TYPE_CHECKING imports avoid circular dependencies
 
 **Consequences**:
@@ -233,12 +233,12 @@ This document records key architectural decisions for genro-mail-proxy.
 
 **Status**: Accepted
 
-**Context**: The 0.7.7 transport swap replaces FastAPI with genro-asgi while
+**Context**: The 0.7.7 transport swap replaces FastAPI with kajenn while
 preserving the v1 HTTP contract. The release after it introduces a new contract
 shape (one path per action). Both have to be served without duplicating logic,
 and four production sites call the old paths today.
 
-genro-asgi resolves a request on its path alone — the verb never enters the
+kajenn resolves a request on its path alone — the verb never enters the
 selection — so a version cannot be negotiated by header dispatch, and three v1
 addresses that answer several verbs (`/tenant/{id}`, `/tenant/{id}/api-key`,
 `/instance`) cannot be split into separate handlers while their URLs stand.

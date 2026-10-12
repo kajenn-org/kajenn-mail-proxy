@@ -6,7 +6,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "genro-mail-proxy"
+name = "kajenn-mail-proxy"
 version = "0.7.7"
 description = "Asynchronous email dispatcher microservice with scheduling, rate limiting, attachments, and a FastAPI REST API."
 readme = "README.md"
@@ -19,7 +19,7 @@ keywords = [
     "email",
     "smtp",
     "mail-proxy",
-    "genro-asgi",
+    "kajenn",
     "async",
     "genro",
     "genropy"
@@ -41,7 +41,7 @@ dependencies = [
     "aiosmtplib>=2.0.0",
     "aiohttp>=3.9.0,<4.0",
     "aiosqlite>=0.20.0",
-    "genro-asgi>=0.38.0",
+    "kajenn>=0.4.5",
     "uvicorn>=0.30.0",
     "prometheus-client>=0.20.0",
     "pydantic>=2.8.0",
@@ -51,7 +51,7 @@ dependencies = [
 ]
 
 [project.scripts]
-mail-proxy = "mail_proxy.cli:main"
+mail-proxy = "kajenn_mail_proxy.cli:main"
 
 [project.optional-dependencies]
 dev = [
@@ -86,7 +86,7 @@ bounce = [
     "aioimaplib>=1.0.0",
 ]
 all = [
-    "genro-mail-proxy[dev,docs,postgresql,large-files,bounce]",
+    "kajenn-mail-proxy[dev,docs,postgresql,large-files,bounce]",
 ]
 
 [project.urls]
@@ -96,7 +96,7 @@ Repository = "https://github.com/genropy/genro-mail-proxy"
 Issues = "https://github.com/genropy/genro-mail-proxy/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/mail_proxy"]
+packages = ["src/kajenn_mail_proxy"]
 
 # pytest configuration lives in pytest.ini, which pytest reads in preference
 # to this file: a [tool.pytest.ini_options] table here would never be applied.
@@ -127,23 +127,23 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["mail_proxy"]
+known-first-party = ["kajenn_mail_proxy"]
 
 [tool.mypy]
 python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
-files = ["src/mail_proxy"]
+files = ["src/kajenn_mail_proxy"]
 
 [tool.coverage.run]
-source = ["src/mail_proxy"]
+source = ["src/kajenn_mail_proxy"]
 branch = true
 omit = [
-    "src/mail_proxy/forms.py",   # Interactive REPL forms
-    "src/mail_proxy/server.py",  # Uvicorn entry point
-    "src/mail_proxy/cli.py",     # Interactive CLI commands
-    "src/mail_proxy/core/event_reporting.py",  # Mixin tested via MailProxy (coverage can't track)
+    "src/kajenn_mail_proxy/forms.py",   # Interactive REPL forms
+    "src/kajenn_mail_proxy/server.py",  # Uvicorn entry point
+    "src/kajenn_mail_proxy/cli.py",     # Interactive CLI commands
+    "src/kajenn_mail_proxy/core/event_reporting.py",  # Mixin tested via MailProxy (coverage can't track)
 ]
 
 [tool.coverage.report]

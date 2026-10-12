@@ -28,7 +28,7 @@ __all__ = ["CommandLogRoutes"]
 class CommandLogRoutes(ProxyRoutes):
     """``/command-log`` — the trail, read as a page or exported for replay."""
 
-    @route(auth_rule=ADMIN_TAG)
+    @route(channel_channels="rest", auth_rule=ADMIN_TAG)
     async def index(
         self,
         *,
@@ -54,7 +54,7 @@ class CommandLogRoutes(ProxyRoutes):
         )
         return response.model_dump(mode="json", exclude_none=True)
 
-    @route(auth_rule=ADMIN_TAG)
+    @route(channel_channels="rest", auth_rule=ADMIN_TAG)
     async def export(
         self,
         *,

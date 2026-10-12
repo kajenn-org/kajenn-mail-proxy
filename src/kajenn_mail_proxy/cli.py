@@ -1,5 +1,5 @@
 # Copyright 2025 Softwell S.r.l. - SPDX-License-Identifier: Apache-2.0
-"""Command-line interface for genro-mail-proxy.
+"""Command-line interface for kajenn-mail-proxy.
 
 This module provides a CLI for managing tenants, accounts, and messages
 directly from the command line without going through the HTTP API.
@@ -45,9 +45,9 @@ from pydantic import ValidationError
 from rich.console import Console
 from rich.table import Table
 
-from mail_proxy.mailproxy_db import MailProxyDb
-from mail_proxy.entities.account.schema import AccountCreate
-from mail_proxy.entities.tenant.schema import (
+from kajenn_mail_proxy.mailproxy_db import MailProxyDb
+from kajenn_mail_proxy.entities.account.schema import AccountCreate
+from kajenn_mail_proxy.entities.tenant.schema import (
     DEFAULT_ATTACHMENT_PATH,
     DEFAULT_SYNC_PATH,
     TenantAuth,
@@ -374,9 +374,9 @@ class InstanceGroup(click.Group):
 
 
 @click.group(cls=InstanceGroup)
-@click.version_option(package_name="genro-mail-proxy")
+@click.version_option(package_name="kajenn-mail-proxy")
 def main() -> None:
-    """genro-mail-proxy CLI - Manage email dispatch instances.
+    """kajenn-mail-proxy CLI - Manage email dispatch instances.
 
     Usage:
 
@@ -706,7 +706,8 @@ def _do_start_instance(instance_name: str, host: str | None, port: int | None,
 
     try:
         uvicorn.run(
-            "mail_proxy.server:app",
+            "kajenn_mail_proxy.server:build_server",
+            factory=True,
             host=host,
             port=port,
             reload=reload,
@@ -1271,9 +1272,9 @@ def _add_connect_command(group: click.Group, instance_name: str) -> None:
         import readline  # noqa: F401
         import rlcompleter  # noqa: F401
 
-        from mail_proxy.client import MailProxyClient
-        from mail_proxy.client import connect as client_connect
-        from mail_proxy.forms import (
+        from kajenn_mail_proxy.client import MailProxyClient
+        from kajenn_mail_proxy.client import connect as client_connect
+        from kajenn_mail_proxy.forms import (
             AccountForm,
             MessageForm,
             TenantForm,

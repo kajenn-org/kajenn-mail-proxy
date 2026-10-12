@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from genro_asgi.exceptions import HTTPException
+from kajenn.exceptions import HTTPException
 from genro_routes import route
 
 from ..auth_tags import TENANT_TAG
@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 class CommandsRoutes(ProxyRoutes):
     """The ``/commands`` group: run-now, suspend, activate, and the three on messages."""
 
-    @route(name="run-now", auth_rule=TENANT_TAG)
+    @route(channel_channels="rest", name="run-now", auth_rule=TENANT_TAG)
     async def run_now(self, *, request: Any, **kwargs: Any) -> dict[str, Any]:
         """Wake the dispatch cycle now, for this token's tenant or for all.
 
@@ -57,11 +57,12 @@ class CommandsRoutes(ProxyRoutes):
             raise HTTPException(400, result.get("error", "Unknown error"))
         return BasicOkResponse.model_validate(result).model_dump(exclude_none=True)
 
-    @route(auth_rule=TENANT_TAG)
+    @route(channel_channels="rest", auth_rule=TENANT_TAG)
     async def suspend(
-        self, *, tenant_id: str, batch_code: str | None = None, **kwargs: Any
+        self, *, request: Any, tenant_id: str, batch_code: str | None = None, **kwargs: Any
     ) -> dict[str, Any]:
         """Hold a tenant's sending, or only the batch the query names."""
+        self.application.require_tenant_scope(request, tenant_id)
         result = await self.core.handle_command(
             "suspend", {"tenant_id": tenant_id, "batch_code": batch_code}
         )
@@ -69,11 +70,12 @@ class CommandsRoutes(ProxyRoutes):
             raise HTTPException(400, result.get("error", "Unknown error"))
         return SuspendResponse.model_validate(result).model_dump(exclude_none=True)
 
-    @route(auth_rule=TENANT_TAG)
+    @route(channel_channels="rest", auth_rule=TENANT_TAG)
     async def activate(
-        self, *, tenant_id: str, batch_code: str | None = None, **kwargs: Any
+        self, *, request: Any, tenant_id: str, batch_code: str | None = None, **kwargs: Any
     ) -> dict[str, Any]:
         """Release what suspend held, for the whole tenant or for one batch."""
+        self.application.require_tenant_scope(request, tenant_id)
         result = await self.core.handle_command(
             "activate", {"tenant_id": tenant_id, "batch_code": batch_code}
         )
@@ -81,9 +83,9 @@ class CommandsRoutes(ProxyRoutes):
             raise HTTPException(400, result.get("error", "Unknown error"))
         return SuspendResponse.model_validate(result).model_dump(exclude_none=True)
 
-    @route(name="add-messages", auth_rule=TENANT_TAG)
+    @route(channel_channels="rest", name="add-messages", auth_rule=TENANT_TAG)
     async def add_messages(
-        self, *, body_data: Any = None, **kwargs: Any
+        self, *, request: Any, body_data: Any = None, **kwargs: Any
     ) -> dict[str, Any]:
         """Enqueue a batch of messages; report what was queued and what was not.
 
@@ -93,6 +95,8 @@ class CommandsRoutes(ProxyRoutes):
         the status code alone.
         """
         payload = self.validated_payload(EnqueueMessagesPayload, body_data)
+        for message in payload.messages:
+            self.application.require_tenant_scope(request, message.tenant_id)
         serialized: list[dict[str, Any]] = []
         for message in payload.messages:
             data = message.model_dump(by_alias=True, exclude_none=True)
@@ -112,7 +116,7 @@ class CommandsRoutes(ProxyRoutes):
             raise HTTPException(400, detail)
         return AddMessagesResponse.model_validate(result).model_dump(exclude_none=True)
 
-    @route(name="delete-messages", auth_rule=TENANT_TAG)
+    @route(channel_channels="rest", name="delete-messages", auth_rule=TENANT_TAG)
     async def delete_messages(
         self, *, request: Any, tenant_id: str, body_data: Any = None, **kwargs: Any
     ) -> dict[str, Any]:
@@ -128,7 +132,7 @@ class CommandsRoutes(ProxyRoutes):
             raise HTTPException(400, result.get("error", "Unknown error"))
         return DeleteMessagesResponse.model_validate(result).model_dump(exclude_none=True)
 
-    @route(name="cleanup-messages", auth_rule=TENANT_TAG)
+    @route(channel_channels="rest", name="cleanup-messages", auth_rule=TENANT_TAG)
     async def cleanup_messages(
         self, *, request: Any, tenant_id: str, body_data: Any = None, **kwargs: Any
     ) -> dict[str, Any]:

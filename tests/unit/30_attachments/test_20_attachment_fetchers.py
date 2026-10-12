@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from mail_proxy.attachments.base64_fetcher import Base64Fetcher
-from mail_proxy.attachments.filesystem_fetcher import FilesystemFetcher
+from kajenn_mail_proxy.attachments.base64_fetcher import Base64Fetcher
+from kajenn_mail_proxy.attachments.filesystem_fetcher import FilesystemFetcher
 
 
 class TestBase64Fetcher:

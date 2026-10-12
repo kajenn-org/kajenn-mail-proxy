@@ -64,8 +64,14 @@ class TestTenantReads:
         assert local_tenants["tenant1"] in ids
         assert local_tenants["tenant2"] in ids
 
-    async def test_active_only_binds_as_a_boolean_query(self, api_client, local_tenants):
-        """``active_only=true`` reaches the handler, and drops the inactive."""
+    @pytest.mark.parametrize("value,active_only", [
+        ("True", True), ("true", True), ("1", True),
+        ("False", False), ("false", False), ("0", False),
+    ])
+    async def test_active_only_binds_as_a_boolean_query(
+        self, api_client, local_tenants, value, active_only
+    ):
+        """Legacy textual booleans filter inactive tenants only when true."""
         inactive_id = "local-tenant-inactive"
         resp = await api_client.post(
             api_routes.TENANT,
@@ -73,11 +79,11 @@ class TestTenantReads:
         )
         assert resp.status_code == 200, resp.text
         try:
-            resp = await api_client.get(api_routes.tenants(active_only=True))
+            resp = await api_client.get(f"{api_routes.tenants()}?active_only={value}")
             assert resp.status_code == 200
             ids = [t["id"] for t in resp.json()["tenants"]]
             assert local_tenants["tenant1"] in ids
-            assert inactive_id not in ids
+            assert (inactive_id not in ids) is active_only
         finally:
             await api_client.delete(api_routes.tenant(inactive_id))
 

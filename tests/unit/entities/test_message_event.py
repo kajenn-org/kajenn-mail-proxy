@@ -8,7 +8,7 @@ from __future__ import annotations
 import pytest
 import pytest_asyncio
 
-from src.mail_proxy.mailproxy_db import MailProxyDb
+from src.kajenn_mail_proxy.mailproxy_db import MailProxyDb
 
 
 @pytest_asyncio.fixture

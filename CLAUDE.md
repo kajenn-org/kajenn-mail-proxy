@@ -1,4 +1,4 @@
-# Claude Code Instructions - genro-mail-proxy
+# Claude Code Instructions - kajenn-mail-proxy
 
 **Parent Document**: This project follows all policies from the central [meta-genro-modules CLAUDE.md](https://github.com/softwellsrl/meta-genro-modules/blob/main/CLAUDE.md)
 

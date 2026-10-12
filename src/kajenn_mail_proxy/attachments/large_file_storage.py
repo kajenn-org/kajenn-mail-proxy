@@ -39,7 +39,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # Secret key for signing download tokens (should be configured in production)
-_DEFAULT_SECRET_KEY = "genro-mail-proxy-default-secret-change-me"
+_DEFAULT_SECRET_KEY = "kajenn-mail-proxy-default-secret-change-me"
 
 
 class LargeFileStorageError(Exception):
@@ -116,7 +116,7 @@ class LargeFileStorage:
         except ImportError as e:
             raise ImportError(
                 "Large file storage requires fsspec. "
-                "Install with: pip install genro-mail-proxy[large-files]"
+                "Install with: pip install kajenn-mail-proxy[large-files]"
             ) from e
 
         self._fs, self._base_path = fsspec.core.url_to_fs(

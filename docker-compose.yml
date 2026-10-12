@@ -1,4 +1,4 @@
-# Production deployment for genro-mail-proxy
+# Production deployment for kajenn-mail-proxy
 #
 # Usage:
 #   # With PostgreSQL (recommended for production):
@@ -22,7 +22,7 @@ services:
   # ============================================
   mailproxy:
     build: .
-    image: genro-mail-proxy:${VERSION:-latest}
+    image: kajenn-mail-proxy:${VERSION:-latest}
     environment:
       GMP_API_TOKEN: ${GMP_API_TOKEN:?API token required}
       GMP_DB_PATH: postgresql://mailproxy:${POSTGRES_PASSWORD:-changeme}@db:5432/mailproxy
@@ -69,7 +69,7 @@ services:
     profiles:
       - sqlite
     build: .
-    image: genro-mail-proxy:${VERSION:-latest}
+    image: kajenn-mail-proxy:${VERSION:-latest}
     environment:
       GMP_API_TOKEN: ${GMP_API_TOKEN:?API token required}
       GMP_DB_PATH: /data/mail_service.db

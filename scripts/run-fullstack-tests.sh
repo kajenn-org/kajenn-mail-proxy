@@ -1,5 +1,5 @@
 #!/bin/bash
-# Full-stack integration test runner for genro-mail-proxy
+# Full-stack integration test runner for kajenn-mail-proxy
 # This script starts the Docker infrastructure, runs tests, and cleans up
 
 set -e
@@ -59,7 +59,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo -e "${GREEN}=======================================${NC}"
-echo -e "${GREEN}  genro-mail-proxy Full-Stack Tests   ${NC}"
+echo -e "${GREEN}  kajenn-mail-proxy Full-Stack Tests   ${NC}"
 echo -e "${GREEN}=======================================${NC}"
 echo ""
 

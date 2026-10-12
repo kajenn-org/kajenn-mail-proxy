@@ -45,7 +45,7 @@ erroring in CI. Declare markers per module, or apply them from a
 
 ### `create_app()` mutates module globals unless given a `lifespan`
 
-`mail_proxy.api.create_app()` sets the module-level `service` global, and
+`kajenn_mail_proxy.api.create_app()` sets the module-level `service` global, and
 without a `lifespan` argument it registers its routes on the module-level
 `app` object rather than building a new one. Pass a `lifespan` to get a fresh
 application — that is what makes an in-process harness possible, and it is why

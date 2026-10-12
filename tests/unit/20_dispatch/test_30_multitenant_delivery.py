@@ -7,7 +7,7 @@ import pytest
 from aioresponses import aioresponses
 from yarl import URL
 
-from mail_proxy.core import MailProxy
+from kajenn_mail_proxy.core import MailProxy
 
 
 class DummyPool:

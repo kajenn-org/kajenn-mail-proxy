@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from genro_asgi.exceptions import HTTPException
+from kajenn.exceptions import HTTPException
 from genro_routes import route
 
 from ..auth_tags import ADMIN_TAG
@@ -29,7 +29,7 @@ __all__ = ["InstanceRoutes"]
 class InstanceRoutes(ProxyRoutes):
     """``/instance`` — the singleton row, read and written, plus the reload."""
 
-    @route(auth_rule=ADMIN_TAG)
+    @route(channel_channels="rest", auth_rule=ADMIN_TAG)
     async def index(self, *, request: Any, body_data: Any = None, **kwargs: Any) -> dict[str, Any]:
         """Dispatch the two ``/instance`` routes on the verb."""
         if request.method == "GET":
@@ -66,7 +66,7 @@ class InstanceRoutes(ProxyRoutes):
         result = await self.core.handle_command("updateInstance", update_data)
         return BasicOkResponse.model_validate(result).model_dump(exclude_none=True)
 
-    @route(name="reload-bounce", auth_rule=ADMIN_TAG)
+    @route(channel_channels="rest", name="reload-bounce", auth_rule=ADMIN_TAG)
     async def reload_bounce(self, **kwargs: Any) -> dict[str, Any]:
         """Restart the bounce receiver on what ``PUT /instance`` stored.
 

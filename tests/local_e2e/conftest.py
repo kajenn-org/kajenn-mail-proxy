@@ -29,10 +29,10 @@ from types import SimpleNamespace
 import pytest
 import pytest_asyncio
 import uvicorn
-from genro_asgi import AsgiServer
 
-from mail_proxy.core import MailProxy
-from mail_proxy.mail_proxy_application import MailProxyApplication
+from kajenn_mail_proxy.core import MailProxy
+from kajenn_mail_proxy.mail_proxy_application import MailProxyApplication
+from kajenn_mail_proxy.server import build_server
 from tests import api_routes
 
 httpx = pytest.importorskip("httpx")
@@ -63,8 +63,9 @@ def local_server(tmp_path_factory):
     db_path = tmp_path_factory.mktemp("local_e2e") / "mail_proxy.db"
     core = MailProxy(db_path=str(db_path), start_active=True, test_mode=True)
 
-    app = MailProxyApplication(core=core, api_token=LOCAL_API_TOKEN)
-    asgi_server = AsgiServer(applications=[app], middleware={"auth": False})
+    asgi_server = build_server(
+        core=core, api_token=LOCAL_API_TOKEN, app_class=MailProxyApplication
+    )
     config = uvicorn.Config(asgi_server, host="127.0.0.1", port=0, log_level="warning")
     server = uvicorn.Server(config)
     thread = threading.Thread(target=server.run, name="local-e2e-uvicorn", daemon=True)

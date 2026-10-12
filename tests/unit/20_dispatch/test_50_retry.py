@@ -5,7 +5,7 @@ import asyncio
 
 import pytest
 
-from mail_proxy.retry import DEFAULT_MAX_RETRIES, DEFAULT_RETRY_DELAYS, RetryStrategy
+from kajenn_mail_proxy.retry import DEFAULT_MAX_RETRIES, DEFAULT_RETRY_DELAYS, RetryStrategy
 
 
 class TestRetryStrategyDefaults:

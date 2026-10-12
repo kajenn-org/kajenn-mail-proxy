@@ -15,7 +15,7 @@ If Dovecot is not available, tests are automatically skipped.
 
 To run these tests:
 1. Start Docker with bounce profile: docker compose --profile bounce up -d
-2. Start mailproxy: uvicorn mail_proxy.server:app
+2. Start mailproxy: uvicorn kajenn_mail_proxy.server:app
 3. Run: pytest tests/fullstack/60_imap/test_10_bounce_live.py -v
 
 The tests will automatically configure bounce detection via PUT /instance

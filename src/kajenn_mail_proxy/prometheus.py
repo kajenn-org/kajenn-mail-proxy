@@ -2,7 +2,7 @@
 """Prometheus metrics for monitoring the mail dispatcher.
 
 This module defines the Prometheus counters and gauges used to track email
-dispatch operations. All metrics use the ``gmp_`` prefix (genro-mail-proxy).
+dispatch operations. All metrics use the ``gmp_`` prefix (kajenn-mail-proxy).
 
 Metrics exposed:
     - ``gmp_sent_total``: Counter of successfully sent emails per account.

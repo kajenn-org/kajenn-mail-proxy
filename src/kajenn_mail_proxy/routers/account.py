@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from genro_asgi.exceptions import HTTPException
+from kajenn.exceptions import HTTPException
 from genro_routes import route
 
 from ..auth_tags import TENANT_TAG
@@ -32,7 +32,7 @@ __all__ = ["AccountRoutes", "AccountsRoutes"]
 class AccountRoutes(ProxyRoutes):
     """``/account`` — the create route and the id-scoped delete."""
 
-    @route(auth_rule=TENANT_TAG)
+    @route(channel_channels="rest", auth_rule=TENANT_TAG)
     async def index(
         self,
         account_id: str | None = None,
@@ -84,7 +84,7 @@ class AccountRoutes(ProxyRoutes):
 class AccountsRoutes(ProxyRoutes):
     """``/accounts`` — the accounts of one tenant, that tenant's only."""
 
-    @route(auth_rule=TENANT_TAG)
+    @route(channel_channels="rest", auth_rule=TENANT_TAG)
     async def index(
         self, *, request: Any, tenant_id: str, **kwargs: Any
     ) -> dict[str, Any]:

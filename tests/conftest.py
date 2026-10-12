@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for mail_proxy tests."""
+"""Shared pytest fixtures for kajenn_mail_proxy tests."""
 
 import asyncio
 import inspect

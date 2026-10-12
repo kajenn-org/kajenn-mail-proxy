@@ -18,7 +18,7 @@ control and integrates with Prometheus for metrics collection.
 Example:
     Running the mail dispatcher (recommended)::
 
-        from mail_proxy.core import MailProxy
+        from kajenn_mail_proxy.core import MailProxy
 
         # Recommended: use create() for automatic initialization
         proxy = await MailProxy.create(
@@ -124,6 +124,8 @@ class MailProxy(DispatcherMixin, ReporterMixin, BounceReceiverMixin):
         self,
         *,
         db_path: str | None = "/data/mail_service.db",
+        persistence=None,
+        cache_config: CacheConfig | None = None,
         config_path: str | None = None,
         logger=None,
         metrics: MailMetrics | None = None,
@@ -195,7 +197,8 @@ class MailProxy(DispatcherMixin, ReporterMixin, BounceReceiverMixin):
 
         self.logger = logger or get_logger()
         self.pool = SMTPPool()
-        self.db = MailProxyDb(db_path or ":memory:")
+        self.db = persistence if persistence is not None else MailProxyDb(db_path or ":memory:")
+        self._configured_cache = cache_config
         self._config_path = config_path
         self.rate_limiter = RateLimiter(self.db)
         self.metrics = metrics or MailMetrics()
@@ -318,7 +321,7 @@ class MailProxy(DispatcherMixin, ReporterMixin, BounceReceiverMixin):
         await self._init_account_metrics()
 
         # Load cache configuration from environment or config file
-        self._cache_config = load_cache_config(self._config_path)
+        self._cache_config = self._configured_cache or load_cache_config(self._config_path)
 
         # Initialize attachment cache if configured
         if self._cache_config.enabled:
@@ -889,7 +892,7 @@ class MailProxy(DispatcherMixin, ReporterMixin, BounceReceiverMixin):
         )
         # Stop bounce receiver if running
         await self._stop_bounce_receiver()
-        await self.db.adapter.close()
+        await self.db.close()
 
     # ----------------------------------------------------------------- messaging
     async def results(self):

@@ -10,7 +10,7 @@ whatever still fails afterwards is a real regression.
 
 Two blocks, deliberately separate:
 
-* **API routes** — the 26 routes ``src/mail_proxy/api.py`` publishes. A route
+* **API routes** — the 26 routes ``src/kajenn_mail_proxy/api.py`` publishes. A route
   whose handler takes no query parameter is a constant; every other route is
   a function that returns the full relative URL, query string included.
 * **Client-protocol paths** — the paths the proxy calls *on the client*, not

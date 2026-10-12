@@ -57,7 +57,7 @@ jobs:
           # Start mailproxy with logging to file
           GMP_DB_PATH=postgresql://mailproxy:testpassword@localhost:5433/mailproxy \
           GMP_API_TOKEN=test-api-token \
-          uvicorn mail_proxy.server:app --host 0.0.0.0 --port 8000 > /tmp/mailproxy.log 2>&1 &
+          uvicorn kajenn_mail_proxy.server:app --host 0.0.0.0 --port 8000 > /tmp/mailproxy.log 2>&1 &
           echo $! > /tmp/mailproxy.pid
           echo "Mail-proxy started with PID $(cat /tmp/mailproxy.pid)"
 

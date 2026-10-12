@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from genro_asgi.exceptions import HTTPException, HTTPNotFound
+from kajenn.exceptions import HTTPException, HTTPNotFound
 from genro_routes import route
 
 from ..auth_tags import ADMIN_TAG, TENANT_TAG
@@ -42,7 +42,7 @@ __all__ = ["TenantRoutes", "TenantsRoutes"]
 class TenantRoutes(ProxyRoutes):
     """``/tenant`` — creation, the three verbs on one id, and the api key."""
 
-    @route(auth_rule=TENANT_TAG)
+    @route(channel_channels="rest", auth_rule=TENANT_TAG)
     async def index(
         self,
         tenant_id: str | None = None,
@@ -131,7 +131,7 @@ class TenantRoutes(ProxyRoutes):
 class TenantsRoutes(ProxyRoutes):
     """``/tenants`` — the listing and the sync view, both admin-only."""
 
-    @route(auth_rule=ADMIN_TAG)
+    @route(channel_channels="rest", auth_rule=ADMIN_TAG)
     async def index(self, *, active_only: bool = False, **kwargs: Any) -> dict[str, Any]:
         """List every tenant, or only the active ones."""
         result = await self.core.handle_command("listTenants", {"active_only": active_only})
@@ -139,7 +139,7 @@ class TenantsRoutes(ProxyRoutes):
             mode="json", exclude_none=True
         )
 
-    @route(name="sync-status", auth_rule=ADMIN_TAG)
+    @route(channel_channels="rest", name="sync-status", auth_rule=ADMIN_TAG)
     async def sync_status(self, **kwargs: Any) -> dict[str, Any]:
         """Report every tenant's last sync, whether one is due, and its DND state."""
         result = await self.core.handle_command("listTenantsSyncStatus", {})

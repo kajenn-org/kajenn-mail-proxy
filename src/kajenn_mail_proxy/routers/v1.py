@@ -70,19 +70,19 @@ class V1Routes(ProxyRoutes):
             for name, cls in groups.items()
         )
 
-    @route()
+    @route(channel_channels="rest", )
     async def health(self) -> dict[str, str]:
         """Liveness probe, no auth: the v1 body at the v1 address."""
         return {"status": "ok"}
 
-    @route(auth_rule=TENANT_TAG)
+    @route(channel_channels="rest", auth_rule=TENANT_TAG)
     async def status(self, **kwargs: Any) -> dict[str, Any]:
         """Authenticated probe: the token is valid, and dispatch is running or not."""
         return StatusResponse(ok=True, active=self.core._active).model_dump(
             exclude_none=True
         )
 
-    @route(media_type=METRICS_MEDIA_TYPE)
+    @route(channel_channels="rest", media_type=METRICS_MEDIA_TYPE)
     async def metrics(self, **kwargs: Any) -> bytes:
         """Prometheus exposition of the engine's metrics, no auth as in v1."""
         return self.core.metrics.generate_latest()

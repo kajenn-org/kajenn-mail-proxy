@@ -35,7 +35,7 @@ class PostgresAdapter(DbAdapter):
         except ImportError as e:
             raise ImportError(
                 "PostgreSQL support requires psycopg. "
-                "Install with: pip install genro-mail-proxy[postgresql]"
+                "Install with: pip install kajenn-mail-proxy[postgresql]"
             ) from e
 
     def _convert_placeholders(self, query: str) -> str:

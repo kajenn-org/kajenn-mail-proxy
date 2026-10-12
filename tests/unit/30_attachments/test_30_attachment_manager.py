@@ -7,8 +7,8 @@ import tempfile
 
 import pytest
 
-from mail_proxy.attachments import AttachmentManager
-from mail_proxy.attachments.cache import TieredCache
+from kajenn_mail_proxy.attachments import AttachmentManager
+from kajenn_mail_proxy.attachments.cache import TieredCache
 
 
 class TestParseFilename:

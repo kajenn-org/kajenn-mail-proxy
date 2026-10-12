@@ -9,7 +9,7 @@ into separate fields (client_auth_method, client_auth_token, etc.)
 for easier input.
 
 Usage in REPL:
-    >>> from mail_proxy.forms import TenantForm, AccountForm
+    >>> from kajenn_mail_proxy.forms import TenantForm, AccountForm
     >>> tenant_data = TenantForm().run()
     >>> account_data = AccountForm().run()
 
@@ -527,7 +527,7 @@ class InteractiveForm:
 class TenantForm(InteractiveForm):
     """Interactive form for creating a tenant."""
 
-    from mail_proxy.entities.tenant.schema import TenantCreate
+    from kajenn_mail_proxy.entities.tenant.schema import TenantCreate
     model = TenantCreate
     title = "Create New Tenant"
     fields = [
@@ -551,7 +551,7 @@ class TenantForm(InteractiveForm):
 class AccountForm(InteractiveForm):
     """Interactive form for creating an SMTP account."""
 
-    from mail_proxy.entities.account.schema import AccountCreate
+    from kajenn_mail_proxy.entities.account.schema import AccountCreate
     model = AccountCreate
     title = "Create New SMTP Account"
     fields = [
@@ -581,7 +581,7 @@ class AccountForm(InteractiveForm):
 class MessageForm(InteractiveForm):
     """Interactive form for creating an email message."""
 
-    from mail_proxy.entities.message.schema import MessageCreate
+    from kajenn_mail_proxy.entities.message.schema import MessageCreate
     model = MessageCreate
     title = "Create New Message"
     fields = [

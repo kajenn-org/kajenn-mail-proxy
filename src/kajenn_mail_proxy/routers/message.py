@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from genro_asgi.exceptions import HTTPException
+from kajenn.exceptions import HTTPException
 from genro_routes import route
 
 from ..auth_tags import TENANT_TAG
@@ -28,7 +28,7 @@ __all__ = ["MessagesRoutes"]
 class MessagesRoutes(ProxyRoutes):
     """``/messages`` — the message records of one tenant."""
 
-    @route(auth_rule=TENANT_TAG)
+    @route(channel_channels="rest", auth_rule=TENANT_TAG)
     async def index(
         self,
         *,

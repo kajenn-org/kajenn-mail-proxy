@@ -115,7 +115,7 @@ class MailProxyDb(SqlDb):
         # This handles the messages.pk INTEGER->UUID migration for pre-0.6.5 databases
         if await self.messages.migrate_from_legacy_schema():
             import logging
-            logging.getLogger("mail_proxy").info(
+            logging.getLogger("kajenn_mail_proxy").info(
                 "Migrated messages table from legacy schema (INTEGER pk -> UUID pk)"
             )
 

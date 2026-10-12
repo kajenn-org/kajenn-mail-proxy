@@ -24,7 +24,7 @@ class TestMetrics:
 
         content = resp.text
         # Should contain Prometheus-style metrics
-        assert "mail_proxy" in content or "HELP" in content or "TYPE" in content
+        assert "kajenn_mail_proxy" in content or "HELP" in content or "TYPE" in content
 
     async def test_metrics_endpoint_no_auth(self):
         """Metrics endpoint must be scrapable without a token.
