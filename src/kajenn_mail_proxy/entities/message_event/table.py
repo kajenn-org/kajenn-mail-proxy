@@ -21,7 +21,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from ...sql import Integer, String, Table
+from ...persistence.schema import Integer, String, Table
 
 
 class MessageEventTable(Table):
@@ -44,7 +44,7 @@ class MessageEventTable(Table):
         c.column("metadata", String)  # JSON for extra data (bounce_type, bounce_code)
         c.column("reported_ts", Integer)  # when event was reported to client
 
-    async def add_event(
+    def add_event(
         self,
         message_pk: str,
         event_type: str,
@@ -74,11 +74,11 @@ class MessageEventTable(Table):
         }
 
         # Check if using PostgreSQL (has psycopg pool)
-        is_postgres = hasattr(self.db.adapter, "_pool") and self.db.adapter._pool is not None  # type: ignore[attr-defined]
+        is_postgres = self.db.backend == "postgresql"
 
         if is_postgres:
             # PostgreSQL: use RETURNING to get the auto-generated id
-            row = await self.db.adapter.fetch_one(
+            row = self.db.adapter.fetch_one(
                 """
                 INSERT INTO message_events (message_pk, event_type, event_ts, description, metadata)
                 VALUES (:message_pk, :event_type, :event_ts, :description, :metadata)
@@ -89,23 +89,23 @@ class MessageEventTable(Table):
             return int(row["id"]) if row else 0
         else:
             # SQLite: use last_insert_rowid()
-            await self.execute(
+            self.execute(
                 """
                 INSERT INTO message_events (message_pk, event_type, event_ts, description, metadata)
                 VALUES (:message_pk, :event_type, :event_ts, :description, :metadata)
                 """,
                 params,
             )
-            row = await self.db.adapter.fetch_one("SELECT last_insert_rowid() as id", {})
+            row = self.db.adapter.fetch_one("SELECT last_insert_rowid() as id", {})
             return int(row["id"]) if row else 0
 
-    async def fetch_unreported(self, limit: int) -> list[dict[str, Any]]:
+    def fetch_unreported(self, limit: int) -> list[dict[str, Any]]:
         """Fetch events that haven't been reported to clients yet.
 
         Returns events ordered by event_ts to maintain chronological order.
         Includes message_id (client-facing ID) for external reporting.
         """
-        rows = await self.db.adapter.fetch_all(
+        rows = self.db.adapter.fetch_all(
             """
             SELECT
                 e.id as event_id,
@@ -138,14 +138,14 @@ class MessageEventTable(Table):
             result.append(event)
         return result
 
-    async def mark_reported(self, event_ids: list[int], reported_ts: int) -> None:
+    def mark_reported(self, event_ids: list[int], reported_ts: int) -> None:
         """Mark events as reported to client."""
         if not event_ids:
             return
         params: dict[str, Any] = {"reported_ts": reported_ts}
         params.update({f"id_{i}": eid for i, eid in enumerate(event_ids)})
         placeholders = ", ".join(f":id_{i}" for i in range(len(event_ids)))
-        await self.execute(
+        self.execute(
             f"""
             UPDATE message_events
             SET reported_ts = :reported_ts
@@ -154,13 +154,13 @@ class MessageEventTable(Table):
             params,
         )
 
-    async def get_events_for_message(self, message_pk: str) -> list[dict[str, Any]]:
+    def get_events_for_message(self, message_pk: str) -> list[dict[str, Any]]:
         """Get all events for a specific message, ordered chronologically.
 
         Args:
             message_pk: Internal message pk (UUID).
         """
-        rows = await self.db.adapter.fetch_all(
+        rows = self.db.adapter.fetch_all(
             """
             SELECT id as event_id, message_pk, event_type, event_ts, description, metadata, reported_ts
             FROM message_events
@@ -180,21 +180,21 @@ class MessageEventTable(Table):
             result.append(event)
         return result
 
-    async def delete_for_message(self, message_pk: str) -> int:
+    def delete_for_message(self, message_pk: str) -> int:
         """Delete all events for a message. Returns deleted count.
 
         Args:
             message_pk: Internal message pk (UUID).
         """
-        return await self.delete(where={"message_pk": message_pk})
+        return self.delete(where={"message_pk": message_pk})
 
-    async def count_unreported_for_message(self, message_pk: str) -> int:
+    def count_unreported_for_message(self, message_pk: str) -> int:
         """Count unreported events for a message.
 
         Args:
             message_pk: Internal message pk (UUID).
         """
-        row = await self.db.adapter.fetch_one(
+        row = self.db.adapter.fetch_one(
             """
             SELECT COUNT(*) as cnt
             FROM message_events

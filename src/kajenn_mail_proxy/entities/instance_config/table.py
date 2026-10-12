@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from ...sql import String, Table, Timestamp
+from ...persistence.schema import String, Table, Timestamp
 
 
 class InstanceConfigTable(Table):
@@ -20,22 +20,22 @@ class InstanceConfigTable(Table):
         c.column("value", String, nullable=False)
         c.column("updated_at", Timestamp, default="CURRENT_TIMESTAMP")
 
-    async def get(self, key: str, default: str | None = None) -> str | None:
+    def get(self, key: str, default: str | None = None) -> str | None:
         """Get a configuration value by key."""
-        row = await self.select_one(columns=["value"], where={"key": key})
+        row = self.select_one(columns=["value"], where={"key": key})
         return row["value"] if row else default
 
-    async def set(self, key: str, value: str) -> None:
+    def set(self, key: str, value: str) -> None:
         """Set a configuration value."""
-        await self.upsert(
+        self.upsert(
             {"key": key, "value": value},
             conflict_columns=["key"],
             update_extras=["updated_at = CURRENT_TIMESTAMP"],
         )
 
-    async def get_all(self) -> dict[str, str]:
+    def get_all(self) -> dict[str, str]:
         """Get all configuration values as a dict."""
-        rows = await self.select(columns=["key", "value"])
+        rows = self.select(columns=["key", "value"])
         return {row["key"]: row["value"] for row in rows}
 
 

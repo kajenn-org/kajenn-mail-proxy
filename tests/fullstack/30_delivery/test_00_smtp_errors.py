@@ -13,10 +13,15 @@ import pytest_asyncio
 from tests import api_routes
 from tests.fullstack.helpers import (
     SMTP_RANDOM_HOST,
+    SMTP_RANDOM_PORT,
     SMTP_RATELIMIT_HOST,
+    SMTP_RATELIMIT_PORT,
     SMTP_REJECT_HOST,
+    SMTP_REJECT_PORT,
     SMTP_TEMPFAIL_HOST,
+    SMTP_TEMPFAIL_PORT,
     SMTP_TIMEOUT_HOST,
+    SMTP_TIMEOUT_PORT,
     trigger_dispatch,
     wait_for_message_status,
 )
@@ -35,35 +40,35 @@ class TestSmtpErrorHandling:
                 "id": "account-smtp-reject",
                 "tenant_id": "test-tenant-1",
                 "host": SMTP_REJECT_HOST,
-                "port": 1025,  # Internal Docker port
+                "port": SMTP_REJECT_PORT,
                 "use_tls": False,
             },
             {
                 "id": "account-smtp-tempfail",
                 "tenant_id": "test-tenant-1",
                 "host": SMTP_TEMPFAIL_HOST,
-                "port": 1025,
+                "port": SMTP_TEMPFAIL_PORT,
                 "use_tls": False,
             },
             {
                 "id": "account-smtp-timeout",
                 "tenant_id": "test-tenant-1",
                 "host": SMTP_TIMEOUT_HOST,
-                "port": 1025,
+                "port": SMTP_TIMEOUT_PORT,
                 "use_tls": False,
             },
             {
                 "id": "account-smtp-ratelimit",
                 "tenant_id": "test-tenant-1",
                 "host": SMTP_RATELIMIT_HOST,
-                "port": 1025,
+                "port": SMTP_RATELIMIT_PORT,
                 "use_tls": False,
             },
             {
                 "id": "account-smtp-random",
                 "tenant_id": "test-tenant-1",
                 "host": SMTP_RANDOM_HOST,
-                "port": 1025,
+                "port": SMTP_RANDOM_PORT,
                 "use_tls": False,
             },
         ]
@@ -219,7 +224,7 @@ class TestRetryLogic:
             "id": "retry-test-account",
             "tenant_id": "test-tenant-1",
             "host": SMTP_TEMPFAIL_HOST,
-            "port": 1025,
+            "port": SMTP_TEMPFAIL_PORT,
             "use_tls": False,
         }
         await api_client.post(api_routes.ACCOUNT, json=account_data)
@@ -260,7 +265,7 @@ class TestRetryLogic:
             "id": "error-details-account",
             "tenant_id": "test-tenant-1",
             "host": SMTP_REJECT_HOST,
-            "port": 1025,
+            "port": SMTP_REJECT_PORT,
             "use_tls": False,
         }
         await api_client.post(api_routes.ACCOUNT, json=account_data)

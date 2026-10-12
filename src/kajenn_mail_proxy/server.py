@@ -10,6 +10,7 @@ from typing import Any
 from kajenn import AsgiServer
 from kajenn.config import AsgiConfigBuilder
 
+from .asqueel_db import MailDatabase
 from .configuration import BounceSettings, CacheSettings, EngineSettings
 from .mail_proxy_application import MailProxyApplication
 
@@ -56,10 +57,13 @@ def build_server(
         def main(self, root):
             cfg = root.configuration()
             cfg.server().tasks(enabled=False)
+            if core is None and persistence is None:
+                cfg.databases().database(code="mail", db_class=MailDatabase, connection_string=location)
             app = cfg.applications().application(
                 code="mailproxy",
                 mount="mailproxy",
                 app_class=app_class,
+                db_name="mail" if core is None and persistence is None else None,
                 core=core,
                 persistence=persistence,
                 api_token=token,

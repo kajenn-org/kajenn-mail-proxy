@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ...sql import Integer, String, Table, Timestamp
+from ...persistence.schema import Integer, String, Table, Timestamp
 
 
 class AccountsTable(Table):
@@ -62,7 +62,7 @@ class AccountsTable(Table):
         c.column("imap_last_sync", Timestamp)
         c.column("imap_uidvalidity", Integer)
 
-    async def add(self, acc: dict[str, Any]) -> None:
+    def add(self, acc: dict[str, Any]) -> None:
         """Insert or update an SMTP account.
 
         Supports both regular SMTP accounts and PEC accounts with IMAP config.
@@ -98,13 +98,13 @@ class AccountsTable(Table):
             data["imap_password"] = acc.get("imap_password") or acc.get("password")
             data["imap_folder"] = acc.get("imap_folder", "INBOX")
 
-        await self.upsert(
+        self.upsert(
             data,
             conflict_columns=["tenant_id", "id"],
             update_extras=["updated_at = CURRENT_TIMESTAMP"],
         )
 
-    async def add_pec_account(self, acc: dict[str, Any]) -> None:
+    def add_pec_account(self, acc: dict[str, Any]) -> None:
         """Insert or update a PEC account with IMAP configuration.
 
         PEC accounts have is_pec_account=1 and require IMAP settings
@@ -123,7 +123,7 @@ class AccountsTable(Table):
         use_tls = acc.get("use_tls")
         use_tls_val = None if use_tls is None else (1 if use_tls else 0)
 
-        await self.upsert(
+        self.upsert(
             {
                 "id": acc["id"],
                 "tenant_id": acc["tenant_id"],  # Required for multi-tenant isolation
@@ -150,9 +150,9 @@ class AccountsTable(Table):
             update_extras=["updated_at = CURRENT_TIMESTAMP"],
         )
 
-    async def list_pec_accounts(self) -> list[dict[str, Any]]:
+    def list_pec_accounts(self) -> list[dict[str, Any]]:
         """Return all PEC accounts (is_pec_account=1)."""
-        rows = await self.db.adapter.fetch_all(
+        rows = self.db.adapter.fetch_all(
             """
             SELECT id, tenant_id, host, port, user, ttl,
                    limit_per_minute, limit_per_hour, limit_per_day,
@@ -168,7 +168,7 @@ class AccountsTable(Table):
         )
         return [self._decode_use_tls(dict(row)) for row in rows]
 
-    async def update_imap_sync_state(
+    def update_imap_sync_state(
         self,
         tenant_id: str,
         account_id: str,
@@ -189,7 +189,7 @@ class AccountsTable(Table):
             "last_uid": last_uid,
         }
         if uidvalidity is not None:
-            await self.execute(
+            self.execute(
                 """
                 UPDATE accounts
                 SET imap_last_uid = :last_uid,
@@ -201,7 +201,7 @@ class AccountsTable(Table):
                 {**params, "uidvalidity": uidvalidity},
             )
         else:
-            await self.execute(
+            self.execute(
                 """
                 UPDATE accounts
                 SET imap_last_uid = :last_uid,
@@ -212,7 +212,7 @@ class AccountsTable(Table):
                 params,
             )
 
-    async def get(self, tenant_id: str, account_id: str) -> dict[str, Any]:
+    def get(self, tenant_id: str, account_id: str) -> dict[str, Any]:
         """Fetch a single SMTP account or raise if not found.
 
         Args:
@@ -222,12 +222,12 @@ class AccountsTable(Table):
         Raises:
             ValueError: If account not found for this tenant.
         """
-        account = await self.select_one(where={"tenant_id": tenant_id, "id": account_id})
+        account = self.select_one(where={"tenant_id": tenant_id, "id": account_id})
         if not account:
             raise ValueError(f"Account '{account_id}' not found for tenant '{tenant_id}'")
         return self._decode_use_tls(account)
 
-    async def list_all(self, tenant_id: str | None = None) -> list[dict[str, Any]]:
+    def list_all(self, tenant_id: str | None = None) -> list[dict[str, Any]]:
         """Return SMTP accounts, optionally filtered by tenant."""
         columns = [
             "id", "tenant_id", "host", "port", "user", "ttl",
@@ -238,13 +238,13 @@ class AccountsTable(Table):
         ]
 
         if tenant_id:
-            rows = await self.select(columns=columns, where={"tenant_id": tenant_id}, order_by="id")
+            rows = self.select(columns=columns, where={"tenant_id": tenant_id}, order_by="id")
         else:
-            rows = await self.select(columns=columns, order_by="id")
+            rows = self.select(columns=columns, order_by="id")
 
         return [self._decode_account(acc) for acc in rows]
 
-    async def remove(self, tenant_id: str, account_id: str) -> None:
+    def remove(self, tenant_id: str, account_id: str) -> None:
         """Remove an SMTP account for a specific tenant.
 
         Args:
@@ -254,7 +254,7 @@ class AccountsTable(Table):
         Note: Related messages and send_log should be cleaned by the calling code
         or via foreign key constraints.
         """
-        await self.delete(where={"tenant_id": tenant_id, "id": account_id})
+        self.delete(where={"tenant_id": tenant_id, "id": account_id})
 
     def _decode_use_tls(self, account: dict[str, Any]) -> dict[str, Any]:
         """Convert use_tls INTEGER to bool/None."""
@@ -272,22 +272,19 @@ class AccountsTable(Table):
             account["is_pec_account"] = bool(val) if val else False
         return account
 
-    async def sync_schema(self) -> None:
+    def sync_schema(self) -> None:
         """Sync table schema.
 
         For new databases, PRIMARY KEY (tenant_id, id) is created automatically.
         For existing databases without the composite PK, creates a UNIQUE index
         as a fallback to enforce multi-tenant isolation.
         """
-        await super().sync_schema()
+        super().sync_schema()
         # Fallback: add UNIQUE index for existing DBs without composite PK
-        try:
-            await self.execute(
-                'CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_tenant_id '
-                'ON accounts ("tenant_id", "id")'
-            )
-        except Exception:
-            pass  # Index already exists or PK constraint covers it
+        self.execute(
+            'CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_tenant_id '
+            'ON accounts ("tenant_id", "id")'
+        )
 
 
 __all__ = ["AccountsTable"]

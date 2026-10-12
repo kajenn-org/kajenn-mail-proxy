@@ -49,3 +49,8 @@ tests
 LICENSE
 NOTICE
 Makefile
+
+# Local migration and virtual environments
+.venv
+venv
+temp

@@ -1,10 +1,12 @@
 """Tests for CLI commands and helper functions."""
 
+import asyncio
 import json
 import os
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 from click.testing import CliRunner
 
 from kajenn_mail_proxy.cli import (
@@ -42,6 +44,31 @@ class TestHelperFunctions:
 
         result = run_async(async_func())
         assert result == 42
+
+    @pytest.mark.parametrize("fails", [False, True])
+    def test_run_async_closes_persistence_on_success_and_error(self, fails):
+        events = []
+        operation_loop = None
+
+        class Persistence:
+            async def close(self):
+                assert asyncio.get_running_loop() is operation_loop
+                events.append("closed")
+
+        async def operation():
+            nonlocal operation_loop
+            operation_loop = asyncio.get_running_loop()
+            events.append("operation")
+            if fails:
+                raise RuntimeError("operation failed")
+            return 42
+
+        if fails:
+            with pytest.raises(RuntimeError, match="operation failed"):
+                run_async(operation(), persistence=Persistence())
+        else:
+            assert run_async(operation(), persistence=Persistence()) == 42
+        assert events == ["operation", "closed"]
 
     def test_generate_api_token(self):
         """Test _generate_api_token generates secure tokens."""

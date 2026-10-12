@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ...sql import Integer, String, Table, Timestamp
+from ...persistence.schema import Integer, String, Table, Timestamp
 
 
 class TenantsTable(Table):
@@ -35,7 +35,7 @@ class TenantsTable(Table):
         c.column("created_at", Timestamp, default="CURRENT_TIMESTAMP")
         c.column("updated_at", Timestamp, default="CURRENT_TIMESTAMP")
 
-    async def add(self, tenant: dict[str, Any]) -> str:
+    def add(self, tenant: dict[str, Any]) -> str:
         """Insert or update a tenant configuration.
 
         For new tenants, automatically generates an API key.
@@ -54,11 +54,11 @@ class TenantsTable(Table):
         tenant_id = tenant["id"]
 
         # Check if tenant exists
-        existing = await self.get(tenant_id)
+        existing = self.get(tenant_id)
 
         if existing:
             # Update existing tenant - don't change API key
-            await self.upsert(
+            self.upsert(
                 {
                     "id": tenant_id,
                     "name": tenant.get("name"),
@@ -79,7 +79,7 @@ class TenantsTable(Table):
         raw_key = secrets.token_urlsafe(32)
         key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
 
-        await self.upsert(
+        self.upsert(
             {
                 "id": tenant_id,
                 "name": tenant.get("name"),
@@ -97,24 +97,24 @@ class TenantsTable(Table):
         )
         return raw_key
 
-    async def get(self, tenant_id: str) -> dict[str, Any] | None:
+    def get(self, tenant_id: str) -> dict[str, Any] | None:
         """Fetch a tenant configuration by ID."""
-        tenant = await self.select_one(where={"id": tenant_id})
+        tenant = self.select_one(where={"id": tenant_id})
         if not tenant:
             return None
         return self._decode_active(tenant)
 
-    async def list_all(self, active_only: bool = False) -> list[dict[str, Any]]:
+    def list_all(self, active_only: bool = False) -> list[dict[str, Any]]:
         """Return all tenants, optionally filtered by active status."""
         if active_only:
-            rows = await self.fetch_all(
+            rows = self.fetch_all(
                 "SELECT * FROM tenants WHERE active = 1 ORDER BY id"
             )
         else:
-            rows = await self.select(order_by="id")
+            rows = self.select(order_by="id")
         return [self._decode_active(row) for row in rows]
 
-    async def update_fields(self, tenant_id: str, updates: dict[str, Any]) -> bool:
+    def update_fields(self, tenant_id: str, updates: dict[str, Any]) -> bool:
         """Update a tenant's fields. Returns True if row was updated."""
         if not updates:
             return False
@@ -137,19 +137,19 @@ class TenantsTable(Table):
         params = {f"val_{k}": v for k, v in self._encode_json_fields(values).items()}
         params["tenant_id"] = tenant_id
 
-        rowcount = await self.execute(
+        rowcount = self.execute(
             f"UPDATE tenants SET {', '.join(set_parts)} WHERE id = :tenant_id",
             params,
         )
         return rowcount > 0
 
-    async def remove(self, tenant_id: str) -> bool:
+    def remove(self, tenant_id: str) -> bool:
         """Delete a tenant. Returns True if deleted.
 
         Note: Cascading deletes of accounts/messages should be handled
         by the calling code or foreign key constraints.
         """
-        rowcount = await self.delete(where={"id": tenant_id})
+        rowcount = self.delete(where={"id": tenant_id})
         return rowcount > 0
 
     def _decode_active(self, tenant: dict[str, Any]) -> dict[str, Any]:
@@ -159,7 +159,7 @@ class TenantsTable(Table):
 
     # ----------------------------------------------------------------- API Keys
 
-    async def create_api_key(
+    def create_api_key(
         self, tenant_id: str, expires_at: int | None = None
     ) -> str | None:
         """Create a new API key for a tenant.
@@ -174,14 +174,14 @@ class TenantsTable(Table):
         import hashlib
         import secrets
 
-        tenant = await self.get(tenant_id)
+        tenant = self.get(tenant_id)
         if not tenant:
             return None
 
         raw_key = secrets.token_urlsafe(32)
         key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
 
-        await self.execute(
+        self.execute(
             """
             UPDATE tenants
             SET api_key_hash = :key_hash,
@@ -193,7 +193,7 @@ class TenantsTable(Table):
         )
         return raw_key
 
-    async def get_tenant_by_token(self, raw_key: str) -> dict[str, Any] | None:
+    def get_tenant_by_token(self, raw_key: str) -> dict[str, Any] | None:
         """Find tenant by API key token.
 
         Args:
@@ -206,7 +206,7 @@ class TenantsTable(Table):
         import time
 
         key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
-        tenant = await self.fetch_one(
+        tenant = self.fetch_one(
             "SELECT * FROM tenants WHERE api_key_hash = :key_hash",
             {"key_hash": key_hash},
         )
@@ -219,7 +219,7 @@ class TenantsTable(Table):
 
         return self._decode_active(tenant)
 
-    async def revoke_api_key(self, tenant_id: str) -> bool:
+    def revoke_api_key(self, tenant_id: str) -> bool:
         """Revoke the API key for a tenant.
 
         Args:
@@ -228,7 +228,7 @@ class TenantsTable(Table):
         Returns:
             True if key was revoked, False if tenant not found.
         """
-        rowcount = await self.execute(
+        rowcount = self.execute(
             """
             UPDATE tenants
             SET api_key_hash = NULL,
@@ -242,7 +242,7 @@ class TenantsTable(Table):
 
     # -------------------------------------------------------------- Batch Suspension
 
-    async def suspend_batch(self, tenant_id: str, batch_code: str | None = None) -> bool:
+    def suspend_batch(self, tenant_id: str, batch_code: str | None = None) -> bool:
         """Suspend sending for a tenant, optionally for a specific batch only.
 
         Args:
@@ -252,7 +252,7 @@ class TenantsTable(Table):
         Returns:
             True if tenant was found and updated.
         """
-        tenant = await self.get(tenant_id)
+        tenant = self.get(tenant_id)
         if not tenant:
             return False
 
@@ -270,7 +270,7 @@ class TenantsTable(Table):
             batches.add(batch_code)
             new_value = ",".join(sorted(batches))
 
-        await self.execute(
+        self.execute(
             """
             UPDATE tenants
             SET suspended_batches = :suspended_batches,
@@ -281,7 +281,7 @@ class TenantsTable(Table):
         )
         return True
 
-    async def activate_batch(self, tenant_id: str, batch_code: str | None = None) -> bool:
+    def activate_batch(self, tenant_id: str, batch_code: str | None = None) -> bool:
         """Resume sending for a tenant, optionally for a specific batch only.
 
         Args:
@@ -291,7 +291,7 @@ class TenantsTable(Table):
         Returns:
             True if tenant was found and updated.
         """
-        tenant = await self.get(tenant_id)
+        tenant = self.get(tenant_id)
         if not tenant:
             return False
 
@@ -310,7 +310,7 @@ class TenantsTable(Table):
             batches.discard(batch_code)
             new_value = ",".join(sorted(batches)) if batches else None
 
-        await self.execute(
+        self.execute(
             """
             UPDATE tenants
             SET suspended_batches = :suspended_batches,
@@ -321,13 +321,13 @@ class TenantsTable(Table):
         )
         return True
 
-    async def get_suspended_batches(self, tenant_id: str) -> set[str]:
+    def get_suspended_batches(self, tenant_id: str) -> set[str]:
         """Get the set of suspended batch codes for a tenant.
 
         Returns:
             Set of batch codes, or {"*"} if all suspended, or empty set if none.
         """
-        tenant = await self.get(tenant_id)
+        tenant = self.get(tenant_id)
         if not tenant:
             return set()
 

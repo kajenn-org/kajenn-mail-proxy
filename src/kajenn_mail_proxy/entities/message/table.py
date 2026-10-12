@@ -7,7 +7,7 @@ import json
 from collections.abc import Iterable, Sequence
 from typing import Any
 
-from ...sql import Integer, String, Table, Timestamp
+from ...persistence.schema import Integer, String, Table, Timestamp
 from ...uid import get_uuid
 
 
@@ -53,7 +53,7 @@ class MessagesTable(Table):
         c.column("smtp_ts", Integer)  # When SMTP send was attempted (NULL = pending)
         c.column("is_pec", Integer, default=0)  # PEC flag (1=awaiting receipts)
 
-    async def migrate_from_legacy_schema(self) -> bool:
+    def migrate_from_legacy_schema(self) -> bool:
         """Migrate from legacy schema (INTEGER pk) to new schema (UUID pk).
 
         This migration is needed for databases created before v0.6.5 where
@@ -62,25 +62,12 @@ class MessagesTable(Table):
         Returns:
             True if migration was performed, False if not needed.
         """
-        # Check if migration is needed by looking for pk column
-        try:
-            await self.db.adapter.fetch_one(
-                "SELECT pk FROM messages LIMIT 1"
-            )
-            return False  # pk column exists, no migration needed
-        except Exception:
-            pass  # pk column doesn't exist, need migration
-
-        # Check if old table exists at all
-        try:
-            await self.db.adapter.fetch_one(
-                "SELECT id FROM messages LIMIT 1"
-            )
-        except Exception:
-            return False  # Table doesn't exist, will be created fresh
+        columns = self.db.adapter.column_names(self.name)
+        if "pk" in columns or "id" not in columns:
+            return False
 
         # Migration: create new table, copy data with generated UUIDs, swap
-        await self.db.adapter.execute("""
+        self.db.adapter.execute("""
             CREATE TABLE messages_new (
                 pk TEXT PRIMARY KEY,
                 id TEXT NOT NULL,
@@ -99,13 +86,13 @@ class MessagesTable(Table):
         """)
 
         # Copy data, generating UUIDs for pk
-        rows = await self.db.adapter.fetch_all(
+        rows = self.db.adapter.fetch_all(
             "SELECT id, tenant_id, account_id, priority, payload, batch_code, "
             "created_at, updated_at, deferred_ts, smtp_ts, is_pec FROM messages"
         )
         for row in rows:
             pk = get_uuid()
-            await self.db.adapter.execute(
+            self.db.adapter.execute(
                 """INSERT INTO messages_new
                    (pk, id, tenant_id, account_id, priority, payload, batch_code,
                     created_at, updated_at, deferred_ts, smtp_ts, is_pec)
@@ -116,12 +103,12 @@ class MessagesTable(Table):
             )
 
         # Swap tables
-        await self.db.adapter.execute("DROP TABLE messages")
-        await self.db.adapter.execute("ALTER TABLE messages_new RENAME TO messages")
+        self.db.adapter.execute("DROP TABLE messages")
+        self.db.adapter.execute("ALTER TABLE messages_new RENAME TO messages")
 
         return True
 
-    async def insert_batch(
+    def insert_batch(
         self,
         entries: Sequence[dict[str, Any]],
         pec_account_ids: set[str] | None = None,
@@ -166,7 +153,7 @@ class MessagesTable(Table):
             # Auto-set is_pec=1 if account is a PEC account
             is_pec = 1 if account_id in pec_accounts else 0
 
-            rowcount = await self.execute(
+            rowcount = self.execute(
                 """
                 INSERT INTO messages (pk, id, tenant_id, account_id, priority, payload, batch_code, deferred_ts, is_pec)
                 VALUES (:pk, :id, :tenant_id, :account_id, :priority, :payload, :batch_code, :deferred_ts, :is_pec)
@@ -198,7 +185,7 @@ class MessagesTable(Table):
 
         return inserted
 
-    async def fetch_ready(
+    def fetch_ready(
         self,
         *,
         limit: int,
@@ -258,10 +245,10 @@ class MessagesTable(Table):
             LIMIT :limit
         """
 
-        rows = await self.db.adapter.fetch_all(query, params)
+        rows = self.db.adapter.fetch_all(query, params)
         return [self._decode_payload(row) for row in rows]
 
-    async def set_deferred(self, pk: str, deferred_ts: int) -> None:
+    def set_deferred(self, pk: str, deferred_ts: int) -> None:
         """Put message back in queue for retry at deferred_ts.
 
         Resets smtp_ts to NULL so the message becomes "pending" again.
@@ -270,7 +257,7 @@ class MessagesTable(Table):
             pk: Internal primary key of the message (UUID string).
             deferred_ts: Timestamp when message can be retried.
         """
-        await self.execute(
+        self.execute(
             """
             UPDATE messages
             SET deferred_ts = :deferred_ts, smtp_ts = NULL, updated_at = CURRENT_TIMESTAMP
@@ -279,13 +266,13 @@ class MessagesTable(Table):
             {"deferred_ts": deferred_ts, "pk": pk},
         )
 
-    async def clear_deferred(self, pk: str) -> None:
+    def clear_deferred(self, pk: str) -> None:
         """Clear the deferred timestamp for a message.
 
         Args:
             pk: Internal primary key of the message (UUID string).
         """
-        await self.execute(
+        self.execute(
             """
             UPDATE messages
             SET deferred_ts = NULL, updated_at = CURRENT_TIMESTAMP
@@ -294,14 +281,14 @@ class MessagesTable(Table):
             {"pk": pk},
         )
 
-    async def mark_sent(self, pk: str, smtp_ts: int) -> None:
+    def mark_sent(self, pk: str, smtp_ts: int) -> None:
         """Mark a message as processed (SMTP attempted successfully).
 
         Args:
             pk: Internal primary key of the message (UUID string).
             smtp_ts: Timestamp when SMTP send was attempted.
         """
-        await self.execute(
+        self.execute(
             """
             UPDATE messages
             SET smtp_ts = :smtp_ts, deferred_ts = NULL, updated_at = CURRENT_TIMESTAMP
@@ -310,14 +297,14 @@ class MessagesTable(Table):
             {"smtp_ts": smtp_ts, "pk": pk},
         )
 
-    async def mark_error(self, pk: str, smtp_ts: int) -> None:
+    def mark_error(self, pk: str, smtp_ts: int) -> None:
         """Mark a message as processed (SMTP attempted with error).
 
         Args:
             pk: Internal primary key of the message (UUID string).
             smtp_ts: Timestamp when SMTP send was attempted.
         """
-        await self.execute(
+        self.execute(
             """
             UPDATE messages
             SET smtp_ts = :smtp_ts, deferred_ts = NULL, updated_at = CURRENT_TIMESTAMP
@@ -326,13 +313,13 @@ class MessagesTable(Table):
             {"smtp_ts": smtp_ts, "pk": pk},
         )
 
-    async def clear_pec_flag(self, pk: str) -> None:
+    def clear_pec_flag(self, pk: str) -> None:
         """Clear the is_pec flag when recipient is not a PEC address.
 
         Args:
             pk: Internal primary key of the message (UUID string).
         """
-        await self.execute(
+        self.execute(
             """
             UPDATE messages
             SET is_pec = 0, updated_at = CURRENT_TIMESTAMP
@@ -341,7 +328,7 @@ class MessagesTable(Table):
             {"pk": pk},
         )
 
-    async def get_pec_without_acceptance(self, cutoff_ts: int) -> list[dict[str, Any]]:
+    def get_pec_without_acceptance(self, cutoff_ts: int) -> list[dict[str, Any]]:
         """Get PEC messages sent before cutoff_ts without acceptance receipt.
 
         Returns messages where:
@@ -349,7 +336,7 @@ class MessagesTable(Table):
         - smtp_ts < cutoff_ts (sent before cutoff)
         - No pec_acceptance event exists
         """
-        rows = await self.db.adapter.fetch_all(
+        rows = self.db.adapter.fetch_all(
             """
             SELECT m.pk, m.id, m.account_id, m.smtp_ts
             FROM messages m
@@ -366,14 +353,14 @@ class MessagesTable(Table):
         )
         return [dict(row) for row in rows]
 
-    async def update_payload(self, pk: str, payload: dict[str, Any]) -> None:
+    def update_payload(self, pk: str, payload: dict[str, Any]) -> None:
         """Update the payload field of a message.
 
         Args:
             pk: Internal primary key of the message (UUID string).
             payload: New payload data.
         """
-        await self.execute(
+        self.execute(
             """
             UPDATE messages
             SET payload = :payload, updated_at = CURRENT_TIMESTAMP
@@ -382,14 +369,14 @@ class MessagesTable(Table):
             {"payload": json.dumps(payload), "pk": pk},
         )
 
-    async def get(self, msg_id: str, tenant_id: str) -> dict[str, Any] | None:
+    def get(self, msg_id: str, tenant_id: str) -> dict[str, Any] | None:
         """Get a single message by ID. Returns None if not found.
 
         Args:
             msg_id: Client-provided message ID.
             tenant_id: Tenant ID for multi-tenant lookup.
         """
-        row = await self.db.adapter.fetch_one(
+        row = self.db.adapter.fetch_one(
             "SELECT * FROM messages WHERE tenant_id = :tenant_id AND id = :id",
             {"tenant_id": tenant_id, "id": msg_id},
         )
@@ -397,13 +384,13 @@ class MessagesTable(Table):
             return None
         return self._decode_payload(row)
 
-    async def get_by_pk(self, pk: str) -> dict[str, Any] | None:
+    def get_by_pk(self, pk: str) -> dict[str, Any] | None:
         """Get a single message by internal primary key.
 
         Args:
             pk: Internal primary key (UUID string).
         """
-        row = await self.db.adapter.fetch_one(
+        row = self.db.adapter.fetch_one(
             "SELECT * FROM messages WHERE pk = :pk",
             {"pk": pk},
         )
@@ -411,20 +398,20 @@ class MessagesTable(Table):
             return None
         return self._decode_payload(row)
 
-    async def remove_by_pk(self, pk: str) -> bool:
+    def remove_by_pk(self, pk: str) -> bool:
         """Remove a message by internal primary key. Returns True if deleted.
 
         Args:
             pk: Internal primary key (UUID string).
         """
-        rowcount = await self.delete(where={"pk": pk})
+        rowcount = self.delete(where={"pk": pk})
         return rowcount > 0
 
-    async def purge_for_account(self, account_id: str) -> None:
+    def purge_for_account(self, account_id: str, tenant_id: str | None = None) -> None:
         """Delete every message linked to the given account."""
-        await self.delete(where={"account_id": account_id})
+        self.delete(where={"account_id": account_id, **({"tenant_id": tenant_id} if tenant_id is not None else {})})
 
-    async def existing_ids(self, ids: Iterable[str]) -> set[str]:
+    def existing_ids(self, ids: Iterable[str]) -> set[str]:
         """Return the subset of ids that already exist in storage."""
         id_list = [mid for mid in ids if mid]
         if not id_list:
@@ -432,13 +419,13 @@ class MessagesTable(Table):
 
         params = {f"id_{i}": mid for i, mid in enumerate(id_list)}
         placeholders = ", ".join(f":id_{i}" for i in range(len(id_list)))
-        rows = await self.db.adapter.fetch_all(
+        rows = self.db.adapter.fetch_all(
             f"SELECT id FROM messages WHERE id IN ({placeholders})",
             params,
         )
         return {row["id"] for row in rows}
 
-    async def get_ids_for_tenant(self, ids: list[str], tenant_id: str) -> set[str]:
+    def get_ids_for_tenant(self, ids: list[str], tenant_id: str) -> set[str]:
         """Return the subset of ids that belong to the specified tenant.
 
         Validates ownership by joining with accounts table.
@@ -457,7 +444,7 @@ class MessagesTable(Table):
         params.update({f"id_{i}": mid for i, mid in enumerate(ids)})
         placeholders = ", ".join(f":id_{i}" for i in range(len(ids)))
 
-        rows = await self.db.adapter.fetch_all(
+        rows = self.db.adapter.fetch_all(
             f"""
             SELECT m.id
             FROM messages m
@@ -469,7 +456,7 @@ class MessagesTable(Table):
         )
         return {row["id"] for row in rows}
 
-    async def remove_fully_reported_before(self, threshold_ts: int) -> int:
+    def remove_fully_reported_before(self, threshold_ts: int) -> int:
         """Delete messages whose all events have been reported before threshold.
 
         A message can be removed when:
@@ -480,7 +467,7 @@ class MessagesTable(Table):
         Returns:
             Number of deleted messages.
         """
-        return await self.execute(
+        return self.execute(
             """
             DELETE FROM messages
             WHERE smtp_ts IS NOT NULL
@@ -500,7 +487,7 @@ class MessagesTable(Table):
             {"threshold_ts": threshold_ts},
         )
 
-    async def remove_fully_reported_before_for_tenant(
+    def remove_fully_reported_before_for_tenant(
         self, threshold_ts: int, tenant_id: str
     ) -> int:
         """Delete fully reported messages older than threshold for a tenant.
@@ -508,7 +495,7 @@ class MessagesTable(Table):
         Returns:
             Number of deleted messages.
         """
-        return await self.execute(
+        return self.execute(
             """
             DELETE FROM messages
             WHERE pk IN (
@@ -529,7 +516,7 @@ class MessagesTable(Table):
             {"threshold_ts": threshold_ts, "tenant_id": tenant_id},
         )
 
-    async def list_all(
+    def list_all(
         self,
         *,
         tenant_id: str | None = None,
@@ -597,15 +584,15 @@ class MessagesTable(Table):
 
         query += " ORDER BY m.priority ASC, m.created_at ASC, m.id ASC"
 
-        rows = await self.db.adapter.fetch_all(query, params)
+        rows = self.db.adapter.fetch_all(query, params)
         messages = [self._decode_payload(row) for row in rows]
 
         if include_history and messages:
-            messages = await self._add_history_to_messages(messages)
+            messages = self._add_history_to_messages(messages)
 
         return messages
 
-    async def _add_history_to_messages(
+    def _add_history_to_messages(
         self, messages: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         """Add event history to each message in a single query."""
@@ -620,7 +607,7 @@ class MessagesTable(Table):
             WHERE message_pk IN ({placeholders})
             ORDER BY event_ts ASC, id ASC
         """
-        event_rows = await self.db.adapter.fetch_all(events_query, params)
+        event_rows = self.db.adapter.fetch_all(events_query, params)
 
         # Group events by message_pk
         events_by_pk: dict[str, list[dict[str, Any]]] = {m["pk"]: [] for m in messages}
@@ -641,9 +628,9 @@ class MessagesTable(Table):
 
         return messages
 
-    async def count_active(self) -> int:
+    def count_active(self) -> int:
         """Return the number of messages still awaiting delivery."""
-        row = await self.db.adapter.fetch_one(
+        row = self.db.adapter.fetch_one(
             """
             SELECT COUNT(*) as cnt FROM messages
             WHERE smtp_ts IS NULL
@@ -651,7 +638,7 @@ class MessagesTable(Table):
         )
         return int(row["cnt"]) if row else 0
 
-    async def count_pending_for_tenant(
+    def count_pending_for_tenant(
         self, tenant_id: str, batch_code: str | None = None
     ) -> int:
         """Count pending messages for a tenant, optionally filtered by batch_code.
@@ -685,7 +672,7 @@ class MessagesTable(Table):
                   AND m.smtp_ts IS NULL
             """
 
-        row = await self.db.adapter.fetch_one(query, params)
+        row = self.db.adapter.fetch_one(query, params)
         return int(row["cnt"]) if row else 0
 
     def _decode_payload(self, data: dict[str, Any]) -> dict[str, Any]:

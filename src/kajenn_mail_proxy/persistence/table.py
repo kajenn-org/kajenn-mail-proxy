@@ -1,5 +1,5 @@
 # Copyright 2025 Softwell S.r.l. - SPDX-License-Identifier: Apache-2.0
-"""Table base class with Columns-based schema (async version)."""
+"""Table base class with Columns-based schema (synchronous version)."""
 
 from __future__ import annotations
 
@@ -9,24 +9,24 @@ from typing import TYPE_CHECKING, Any
 from .column import Columns
 
 if TYPE_CHECKING:
-    from .sqldb import SqlDb
+    from .backend import SyncSqlStore
 
 
 class Table:
-    """Base class for async table managers.
+    """Base class for synchronous table managers.
 
     Subclasses define columns via configure() hook and implement
     domain-specific operations.
 
     Attributes:
         name: Table name in database.
-        db: SqlDb instance reference.
+        db: SyncSqlStore instance reference.
         columns: Column definitions.
     """
 
     name: str
 
-    def __init__(self, db: SqlDb) -> None:
+    def __init__(self, db: SyncSqlStore) -> None:
         self.db = db
         if not hasattr(self, "name") or not self.name:
             raise ValueError(f"{type(self).__name__} must define 'name'")
@@ -42,31 +42,29 @@ class Table:
     # Trigger Hooks
     # -------------------------------------------------------------------------
 
-    async def trigger_on_inserting(self, record: dict[str, Any]) -> dict[str, Any]:
+    def trigger_on_inserting(self, record: dict[str, Any]) -> dict[str, Any]:
         """Called before insert. Can modify record. Return the record to insert."""
         return record
 
-    async def trigger_on_inserted(self, record: dict[str, Any]) -> None:
+    def trigger_on_inserted(self, record: dict[str, Any]) -> None:
         """Called after successful insert."""
         pass
 
-    async def trigger_on_updating(
+    def trigger_on_updating(
         self, record: dict[str, Any], old_record: dict[str, Any]
     ) -> dict[str, Any]:
         """Called before update. Can modify record. Return the record to update."""
         return record
 
-    async def trigger_on_updated(
-        self, record: dict[str, Any], old_record: dict[str, Any]
-    ) -> None:
+    def trigger_on_updated(self, record: dict[str, Any], old_record: dict[str, Any]) -> None:
         """Called after successful update."""
         pass
 
-    async def trigger_on_deleting(self, record: dict[str, Any]) -> None:
+    def trigger_on_deleting(self, record: dict[str, Any]) -> None:
         """Called before delete."""
         pass
 
-    async def trigger_on_deleted(self, record: dict[str, Any]) -> None:
+    def trigger_on_deleted(self, record: dict[str, Any]) -> None:
         """Called after successful delete."""
         pass
 
@@ -93,42 +91,30 @@ class Table:
 
         return f"CREATE TABLE IF NOT EXISTS {self.name} (\n    " + ",\n    ".join(col_defs) + "\n)"
 
-    async def create_schema(self) -> None:
+    def create_schema(self) -> None:
         """Create table if not exists."""
-        await self.db.adapter.execute(self.create_table_sql())
+        self.db.adapter.execute(self.create_table_sql())
 
-    async def add_column_if_missing(self, column_name: str) -> None:
+    def add_column_if_missing(self, column_name: str) -> None:
         """Add column if it doesn't exist (migration helper)."""
         col = self.columns.get(column_name)
         if not col:
             raise ValueError(f"Column '{column_name}' not defined in {self.name}")
 
-        try:
-            await self.db.adapter.execute(
-                f"ALTER TABLE {self.name} ADD COLUMN {col.to_sql()}"
-            )
-        except Exception:
-            pass  # Column already exists
-
-    async def sync_schema(self) -> None:
-        """Sync table schema by adding any missing columns.
-
-        Iterates over all columns defined in configure() and adds them
-        if they don't exist in the database. This enables automatic
-        schema migration when new columns are added to the codebase.
-
-        Safe to call on every startup - existing columns are ignored.
-        Works with both SQLite and PostgreSQL.
-        """
-        for col in self.columns.values():
-            if col.primary_key:
-                continue  # Skip primary key, it's created with the table
+        if column_name not in self.db.adapter.column_names(self.name):
             try:
-                await self.db.adapter.execute(
-                    f"ALTER TABLE {self.name} ADD COLUMN {col.to_sql()}"
-                )
-            except Exception:
-                pass  # Column already exists
+                self.db.adapter.execute(f"ALTER TABLE {self.name} ADD COLUMN {col.to_sql()}")
+            except Exception as error:
+                raise RuntimeError(
+                    f"Unsupported schema migration: {self.name}.{column_name}: {error}"
+                ) from error
+
+    def sync_schema(self) -> None:
+        """Add missing columns; unsupported changes roll back the entire upgrade."""
+        existing = self.db.adapter.column_names(self.name)
+        for col in self.columns.values():
+            if col.name not in existing:
+                self.add_column_if_missing(col.name)
 
     # -------------------------------------------------------------------------
     # JSON Encoding/Decoding
@@ -158,12 +144,12 @@ class Table:
     # CRUD Operations
     # -------------------------------------------------------------------------
 
-    async def insert(self, data: dict[str, Any]) -> int:
+    def insert(self, data: dict[str, Any]) -> int:
         """Insert a row."""
         encoded = self._encode_json_fields(data)
-        return await self.db.adapter.insert(self.name, encoded)
+        return self.db.adapter.insert(self.name, encoded)
 
-    async def select(
+    def select(
         self,
         columns: list[str] | None = None,
         where: dict[str, Any] | None = None,
@@ -171,38 +157,36 @@ class Table:
         limit: int | None = None,
     ) -> list[dict[str, Any]]:
         """Select rows."""
-        rows = await self.db.adapter.select(
-            self.name, columns, where, order_by, limit
-        )
+        rows = self.db.adapter.select(self.name, columns, where, order_by, limit)
         return self._decode_rows(rows)
 
-    async def select_one(
+    def select_one(
         self,
         columns: list[str] | None = None,
         where: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
         """Select single row."""
-        row = await self.db.adapter.select_one(self.name, columns, where)
+        row = self.db.adapter.select_one(self.name, columns, where)
         return self._decode_json_fields(row) if row else None
 
-    async def update(self, values: dict[str, Any], where: dict[str, Any]) -> int:
+    def update(self, values: dict[str, Any], where: dict[str, Any]) -> int:
         """Update rows."""
         encoded = self._encode_json_fields(values)
-        return await self.db.adapter.update(self.name, encoded, where)
+        return self.db.adapter.update(self.name, encoded, where)
 
-    async def delete(self, where: dict[str, Any]) -> int:
+    def delete(self, where: dict[str, Any]) -> int:
         """Delete rows."""
-        return await self.db.adapter.delete(self.name, where)
+        return self.db.adapter.delete(self.name, where)
 
-    async def exists(self, where: dict[str, Any]) -> bool:
+    def exists(self, where: dict[str, Any]) -> bool:
         """Check if row exists."""
-        return await self.db.adapter.exists(self.name, where)
+        return self.db.adapter.exists(self.name, where)
 
-    async def count(self, where: dict[str, Any] | None = None) -> int:
+    def count(self, where: dict[str, Any] | None = None) -> int:
         """Count rows."""
-        return await self.db.adapter.count(self.name, where)
+        return self.db.adapter.count(self.name, where)
 
-    async def upsert(
+    def upsert(
         self,
         data: dict[str, Any],
         conflict_columns: list[str],
@@ -210,33 +194,25 @@ class Table:
     ) -> int:
         """Insert or update on conflict."""
         encoded = self._encode_json_fields(data)
-        return await self.db.adapter.upsert(
-            self.name, encoded, conflict_columns, update_extras
-        )
+        return self.db.adapter.upsert(self.name, encoded, conflict_columns, update_extras)
 
     # -------------------------------------------------------------------------
     # Raw Query
     # -------------------------------------------------------------------------
 
-    async def fetch_one(
-        self, query: str, params: dict[str, Any] | None = None
-    ) -> dict[str, Any] | None:
+    def fetch_one(self, query: str, params: dict[str, Any] | None = None) -> dict[str, Any] | None:
         """Execute raw query, return single row."""
-        row = await self.db.adapter.fetch_one(query, params)
+        row = self.db.adapter.fetch_one(query, params)
         return self._decode_json_fields(row) if row else None
 
-    async def fetch_all(
-        self, query: str, params: dict[str, Any] | None = None
-    ) -> list[dict[str, Any]]:
+    def fetch_all(self, query: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
         """Execute raw query, return all rows."""
-        rows = await self.db.adapter.fetch_all(query, params)
+        rows = self.db.adapter.fetch_all(query, params)
         return self._decode_rows(rows)
 
-    async def execute(
-        self, query: str, params: dict[str, Any] | None = None
-    ) -> int:
+    def execute(self, query: str, params: dict[str, Any] | None = None) -> int:
         """Execute raw query, return affected row count."""
-        return await self.db.adapter.execute(query, params)
+        return self.db.adapter.execute(query, params)
 
 
 __all__ = ["Table"]

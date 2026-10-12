@@ -11,12 +11,14 @@ from kajenn import Avatar
 from kajenn.applications.mcp import McpOpenApiApplication
 from kajenn.exceptions import HTTPBadRequest, HTTPException, HTTPForbidden, HTTPUnauthorized
 from kajenn.middleware.base import headers_dict
+from kajenn.response import Response
 
+from .asqueel_db import MailProxyDb
 from .auth_tags import ADMIN_IDENTITY, ADMIN_TAG, API_TOKEN_HEADER, TENANT_TAG
 from .config_loader import CacheConfig
 from .configuration import CacheSettings, EngineSettings, MailProxyGrammar, read_settings
 from .core import MailProxy
-from .mailproxy_db import MailProxyDb
+from .persistence.async_store import AsyncStore
 from .routers import V1Routes
 from .routers.api import MailApi
 
@@ -73,12 +75,18 @@ class MailProxyApplication(McpOpenApiApplication):
             settings = read_settings(self, "engine", EngineSettings, self._engine_options)
             cache = read_settings(self, "cache", CacheSettings, self._cache_options)
             db_path = self._db_path or self.config("database.path", default="./mail_service.db")
-            persistence = self._persistence or MailProxyDb(db_path)
+            persistence = self._persistence
+            if persistence is None:
+                handler = self.server.databases.get(self.db_name) if self.db_name else None
+                runtime = handler.store.runtime if handler is not None else None
+                persistence = MailProxyDb(db_path, run_sync=self.server.run_sync, runtime=runtime)
             self._core = MailProxy(
                 persistence=persistence,
                 cache_config=CacheConfig(**cache.model_dump()),
                 **settings.model_dump(),
             )
+        if isinstance(getattr(self.core, "db", None), AsyncStore):
+            self.core.db.run_sync = self.server.run_sync
         try:
             await self.core.start()
             await self._configure_bounce()
@@ -120,10 +128,38 @@ class MailProxyApplication(McpOpenApiApplication):
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "http":
             scope["auth"] = await self.authenticate_request(scope)
+        legacy = scope["type"] == "http" and scope.get("path", "").split("/")[1:2] == ["v1"]
+        started = False
+
+        async def tracking_send(message):
+            nonlocal started
+            if message["type"] == "http.response.start":
+                started = True
+            await send(message)
+
         try:
-            await super().__call__(scope, receive, send)
-        except HTTPBadRequest as exc:
-            raise HTTPException(422, exc.detail, headers=exc.headers) from exc
+            await super().__call__(scope, receive, tracking_send)
+        except HTTPException as exc:
+            if started:
+                raise
+            status = 422 if isinstance(exc, HTTPBadRequest) else exc.status
+            if legacy:
+                # Kajenn's outer error middleware uses {"error": ...}; v1
+                # clients require the FastAPI {"detail": ...} envelope even
+                # without an Accept header. Keep structured rejection details.
+                response = Response(
+                    status_code=status,
+                    headers=[
+                        (name.decode("latin-1"), value.decode("latin-1"))
+                        for name, value in exc.headers
+                    ],
+                )
+                response.set_result({"detail": exc.detail})
+                await response(scope, receive, send)
+            elif isinstance(exc, HTTPBadRequest):
+                raise HTTPException(status, exc.detail, headers=exc.headers) from exc
+            else:
+                raise
 
     async def authenticate_request(self, scope: Scope) -> Avatar | None:
         """Resolve an explicit API token, otherwise preserve the Kajenn identity."""

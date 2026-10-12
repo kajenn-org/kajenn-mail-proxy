@@ -15,7 +15,9 @@ sincrono eseguito nel pool di thread Kajenn. Il motore SMTP resta asincrono.
 - Preparazione: clone locale con storia Git; file locali non versionati esclusi.
 - Il remote `legacy` identifica il clone sorgente; push disabilitato.
 - La creazione di un repository GitHub e la pubblicazione non sono ancora eseguite.
-- Fase 1: implementata e verificata localmente (737 test). Fase 2: prossima.
+- Fase 1: completata nel commit `7485772` (737 test al checkpoint).
+- Fase 2: completata; 761 test unit/local, 19 PostgreSQL e 196 fullstack
+  superati, con 6 xfail bounce già presenti (issue #103).
 - Baseline e ambiente: vedere `docs/migration-baseline.md`.
 
 Questo piano recepisce le decisioni della conversazione. `NEXT_STEPS.md` resta
@@ -161,3 +163,54 @@ privilegi (opt-in esplicito `allow_anonymous_admin` disponibile per sviluppo);
 token admin di deployment non letto implicitamente dal DB; i tenant non possono
 sospendere, attivare o accodare per altri tenant. Discovery materializzata prima
 dei filtri per gestire i descriptor lazy incompleti di genro-routes 0.30.1.
+
+
+## Implementazione della fase 2
+
+La persistenza usa Asqueel 0.5.1 con il database `mail` nel registry Kajenn.
+`MailProxyDb` mantiene il contratto async e delega l'intera operazione al pool
+`server.run_sync`; `MailStore` e le tabelle sono sincroni. Anche il motore
+iniettato nell'applicazione usa il pool Kajenn. La CLI usa il pool del proprio
+event loop e chiude esplicitamente la persistenza nel `finally`.
+
+Il modello conserva SQLite `main`, PostgreSQL `public`, chiavi composte e
+unicità per tenant. Il bootstrap esegue DDL compatibile attraverso Asqueel:
+il migrator generico 0.5.1 tenta ATTACH sullo schema SQLite `main`, quindi
+non viene usato per questo layout storico. Aggiornamenti non supportati
+falliscono con rollback dell'intera inizializzazione.
+
+Ogni operazione esegue acquire, contesto tenant, commit/rollback e chiusura
+connessione nel medesimo worker. La cancellazione del chiamante non cancella
+il worker; il drain della chiusura continua anche se viene cancellata la sua
+attesa. `:memory:` usa un file temporaneo privato condiviso dai worker.
+
+Il vecchio backend è stato mantenuto durante la parità additiva (731 test)
+e rimosso soltanto dopo le prove SQLite, PostgreSQL e lifecycle. Eliminati
+`sql/adapters`, `aiosqlite` e il pool psycopg separato. Il pacchetto wheel
+non include il vecchio SQL ed è stato provato in un ambiente pulito.
+
+Correzioni verificate: cancellare account/tenant rimuove i relativi eventi
+senza cancellare messaggi di tenant omonimi; i log condivisi non vengono
+azzerati mentre esiste un altro account omonimo. REST v1 conserva l'envelope
+`detail` anche senza header Accept, con status e header originari.
+
+La procedura di manutenzione, backup e recupero è in
+[docs/asqueel-migration.md](docs/asqueel-migration.md). Rimane il limite
+preesistente dei conteggi rate basati soltanto su `account_id`; usare ID
+account globalmente unici. Un solo dispatcher per database: la migrazione
+non introduce coordinamento multiprocesso né consegna exactly-once.
+
+
+### Chiusura e verifiche della fase 2
+
+12 ottobre 2026: verifiche finali riportate in
+[docs/asqueel-migration.md](docs/asqueel-migration.md). Test unit/local 761,
+PostgreSQL 19, fullstack 196 superati; sei xfail storici bounce restano dichiarati.
+Dopo l'allineamento delle porte nei test dei simulatori SMTP, la ripetizione
+mirata chiude con 30 superati e uno degli xfail preesistenti, confermando
+risposte SMTP 550/451/452 reali. Corrette fixture PEC e callback locali.
+Build wheel e smoke test in ambiente pulito riusciti; nuovi moduli Ruff
+senza rilievi; Bandit con configurazione repository senza rilievi.
+
+Entrambe le fasi sono implementate nel repository locale. Creazione del
+repository remoto e pubblicazione non fanno parte di questo checkpoint.

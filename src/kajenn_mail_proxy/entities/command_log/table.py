@@ -21,7 +21,7 @@ import json
 import time
 from typing import Any
 
-from ...sql import Integer, String, Table
+from ...persistence.schema import Integer, String, Table
 
 
 class CommandLogTable(Table):
@@ -43,7 +43,7 @@ class CommandLogTable(Table):
         c.column("response_status", Integer)  # HTTP status code
         c.column("response_body", String)  # JSON response (summary)
 
-    async def log_command(
+    def log_command(
         self,
         endpoint: str,
         payload: dict[str, Any],
@@ -80,10 +80,10 @@ class CommandLogTable(Table):
         }
 
         # Check if using PostgreSQL
-        is_postgres = hasattr(self.db.adapter, "_pool") and self.db.adapter._pool is not None  # type: ignore[attr-defined]
+        is_postgres = self.db.backend == "postgresql"
 
         if is_postgres:
-            row = await self.db.adapter.fetch_one(
+            row = self.db.adapter.fetch_one(
                 """
                 INSERT INTO command_log (command_ts, endpoint, tenant_id, payload, response_status, response_body)
                 VALUES (:command_ts, :endpoint, :tenant_id, :payload, :response_status, :response_body)
@@ -94,19 +94,19 @@ class CommandLogTable(Table):
             return int(row["id"]) if row else 0
         else:
             # SQLite: insert and get max id (last_insert_rowid doesn't work across connections)
-            await self.execute(
+            self.execute(
                 """
                 INSERT INTO command_log (command_ts, endpoint, tenant_id, payload, response_status, response_body)
                 VALUES (:command_ts, :endpoint, :tenant_id, :payload, :response_status, :response_body)
                 """,
                 params,
             )
-            row = await self.db.adapter.fetch_one(
+            row = self.db.adapter.fetch_one(
                 "SELECT MAX(id) as id FROM command_log", {}
             )
             return int(row["id"]) if row else 0
 
-    async def list_commands(
+    def list_commands(
         self,
         *,
         tenant_id: str | None = None,
@@ -147,7 +147,7 @@ class CommandLogTable(Table):
 
         where_clause = " AND ".join(conditions) if conditions else "1=1"
 
-        rows = await self.db.adapter.fetch_all(
+        rows = self.db.adapter.fetch_all(
             f"""
             SELECT id, command_ts, endpoint, tenant_id, payload, response_status, response_body
             FROM command_log
@@ -175,9 +175,9 @@ class CommandLogTable(Table):
             result.append(record)
         return result
 
-    async def get_command(self, command_id: int) -> dict[str, Any] | None:
+    def get_command(self, command_id: int) -> dict[str, Any] | None:
         """Get a specific command by ID."""
-        row = await self.db.adapter.fetch_one(
+        row = self.db.adapter.fetch_one(
             """
             SELECT id, command_ts, endpoint, tenant_id, payload, response_status, response_body
             FROM command_log
@@ -201,7 +201,7 @@ class CommandLogTable(Table):
                 pass
         return record
 
-    async def export_commands(
+    def export_commands(
         self,
         *,
         tenant_id: str | None = None,
@@ -213,7 +213,7 @@ class CommandLogTable(Table):
         Returns only the essential fields needed for replay:
         endpoint, tenant_id, payload, command_ts (for ordering).
         """
-        commands = await self.list_commands(
+        commands = self.list_commands(
             tenant_id=tenant_id,
             since_ts=since_ts,
             until_ts=until_ts,
@@ -230,7 +230,7 @@ class CommandLogTable(Table):
             for cmd in commands
         ]
 
-    async def purge_before(self, threshold_ts: int) -> int:
+    def purge_before(self, threshold_ts: int) -> int:
         """Delete command logs older than threshold.
 
         Args:
@@ -240,14 +240,14 @@ class CommandLogTable(Table):
             Number of deleted records.
         """
         # Get count first for return value
-        row = await self.db.adapter.fetch_one(
+        row = self.db.adapter.fetch_one(
             "SELECT COUNT(*) as cnt FROM command_log WHERE command_ts < :threshold_ts",
             {"threshold_ts": threshold_ts},
         )
         count = int(row["cnt"]) if row else 0
 
         if count > 0:
-            await self.execute(
+            self.execute(
                 "DELETE FROM command_log WHERE command_ts < :threshold_ts",
                 {"threshold_ts": threshold_ts},
             )

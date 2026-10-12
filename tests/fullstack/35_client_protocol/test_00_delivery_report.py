@@ -20,6 +20,7 @@ from tests.fullstack.helpers import (
     CLIENT_TENANT1_URL,
     MAILHOG_TENANT2_SMTP,
     SMTP_REJECT_HOST,
+    SMTP_REJECT_PORT,
     ClientControl,
     create_dsn_bounce_email,
     inject_bounce_email_to_imap,
@@ -83,7 +84,7 @@ class TestReportShape:
                 "id": "account-protocol-reject",
                 "tenant_id": "test-tenant-1",
                 "host": SMTP_REJECT_HOST,
-                "port": 1025,
+                "port": SMTP_REJECT_PORT,
                 "use_tls": False,
             },
         )

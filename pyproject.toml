@@ -8,7 +8,7 @@ build-backend = "hatchling.build"
 [project]
 name = "kajenn-mail-proxy"
 version = "0.7.7"
-description = "Asynchronous email dispatcher microservice with scheduling, rate limiting, attachments, and a FastAPI REST API."
+description = "Asynchronous email dispatcher microservice with scheduling, rate limiting, attachments, and Kajenn REST/MCP APIs."
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.11"
@@ -40,8 +40,8 @@ classifiers = [
 dependencies = [
     "aiosmtplib>=2.0.0",
     "aiohttp>=3.9.0,<4.0",
-    "aiosqlite>=0.20.0",
     "kajenn>=0.4.5",
+    "asqueel>=0.5.1",
     "uvicorn>=0.30.0",
     "prometheus-client>=0.20.0",
     "pydantic>=2.8.0",
@@ -75,8 +75,7 @@ docs = [
     "sphinxcontrib-mermaid>=1.0.0",
 ]
 postgresql = [
-    "psycopg[binary]>=3.1.0",
-    "psycopg-pool>=3.1.0",
+    "asqueel[postgresql]>=0.5.1",
 ]
 large-files = [
     "fsspec>=2024.1.0",

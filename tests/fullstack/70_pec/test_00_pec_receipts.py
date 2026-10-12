@@ -223,6 +223,7 @@ class TestPecMessageFlow:
         message = {
             "id": msg_id,
             "account_id": "pec-account",
+            "tenant_id": setup_pec_tenant["tenant"]["id"],
             "from": "sender@pec.example.com",
             "to": ["recipient@pec.example.com"],
             "subject": "PEC Test Message",
@@ -251,6 +252,7 @@ class TestPecMessageFlow:
         message = {
             "id": msg_id,
             "account_id": "pec-account",
+            "tenant_id": setup_pec_tenant["tenant"]["id"],
             "from": "sender@pec.example.com",
             "to": ["recipient@pec.example.com"],
             "subject": "PEC Tracking Test",
@@ -289,6 +291,7 @@ class TestPecMessageFlow:
         message = {
             "id": msg_id,
             "account_id": "test-account-1",  # Regular account
+            "tenant_id": setup_test_tenants["tenant1"]["id"],
             "from": "sender@example.com",
             "to": ["recipient@example.com"],
             "subject": "Regular Test Message",
@@ -342,6 +345,7 @@ class TestPecReceiptProcessing:
         message = {
             "id": msg_id,
             "account_id": "pec-account",
+            "tenant_id": setup_pec_tenant["tenant"]["id"],
             "from": "sender@pec.example.com",
             "to": ["recipient@pec.example.com"],
             "subject": "PEC Acceptance Test",
@@ -384,6 +388,7 @@ class TestPecReceiptProcessing:
         message = {
             "id": msg_id,
             "account_id": "pec-account",
+            "tenant_id": setup_pec_tenant["tenant"]["id"],
             "from": "sender@pec.example.com",
             "to": ["recipient@pec.example.com"],
             "subject": "PEC Delivery Test",
@@ -425,6 +430,7 @@ class TestPecReceiptProcessing:
         message = {
             "id": msg_id,
             "account_id": "pec-account",
+            "tenant_id": setup_pec_tenant["tenant"]["id"],
             "from": "sender@pec.example.com",
             "to": ["invalid@pec.example.com"],
             "subject": "PEC Failure Test",

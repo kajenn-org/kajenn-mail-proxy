@@ -24,7 +24,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from ...sql import Integer, String, Table, Timestamp
+from ...persistence.schema import Integer, String, Table, Timestamp
 
 
 class InstanceTable(Table):
@@ -61,56 +61,56 @@ class InstanceTable(Table):
         c.column("created_at", Timestamp, default="CURRENT_TIMESTAMP")
         c.column("updated_at", Timestamp, default="CURRENT_TIMESTAMP")
 
-    async def get_instance(self) -> dict[str, Any] | None:
+    def get_instance(self) -> dict[str, Any] | None:
         """Get the singleton instance configuration."""
-        return await self.select_one(where={"id": 1})
+        return self.select_one(where={"id": 1})
 
-    async def ensure_instance(self) -> dict[str, Any]:
+    def ensure_instance(self) -> dict[str, Any]:
         """Get or create the singleton instance configuration."""
-        row = await self.get_instance()
+        row = self.get_instance()
         if row is None:
-            await self.insert({"id": 1})
-            row = await self.get_instance()
+            self.insert({"id": 1})
+            row = self.get_instance()
         return row  # type: ignore[return-value]
 
-    async def update_instance(self, updates: dict[str, Any]) -> None:
+    def update_instance(self, updates: dict[str, Any]) -> None:
         """Update the singleton instance configuration."""
-        await self.ensure_instance()
-        await self.update(
+        self.ensure_instance()
+        self.update(
             updates | {"updated_at": datetime.now(timezone.utc)},
             where={"id": 1},
         )
 
     # Convenience methods for common config access
 
-    async def get_name(self) -> str:
+    def get_name(self) -> str:
         """Get instance name."""
-        row = await self.ensure_instance()
+        row = self.ensure_instance()
         return row.get("name") or "mail-proxy"
 
-    async def set_name(self, name: str) -> None:
+    def set_name(self, name: str) -> None:
         """Set instance name."""
-        await self.update_instance({"name": name})
+        self.update_instance({"name": name})
 
-    async def get_api_token(self) -> str | None:
+    def get_api_token(self) -> str | None:
         """Get API token."""
-        row = await self.ensure_instance()
+        row = self.ensure_instance()
         return row.get("api_token")
 
-    async def set_api_token(self, token: str) -> None:
+    def set_api_token(self, token: str) -> None:
         """Set API token."""
-        await self.update_instance({"api_token": token})
+        self.update_instance({"api_token": token})
 
     # Bounce detection config
 
-    async def is_bounce_enabled(self) -> bool:
+    def is_bounce_enabled(self) -> bool:
         """Check if bounce detection is enabled."""
-        row = await self.ensure_instance()
+        row = self.ensure_instance()
         return bool(row.get("bounce_enabled"))
 
-    async def get_bounce_config(self) -> dict[str, Any]:
+    def get_bounce_config(self) -> dict[str, Any]:
         """Get bounce detection configuration."""
-        row = await self.ensure_instance()
+        row = self.ensure_instance()
         return {
             "enabled": bool(row.get("bounce_enabled")),
             "imap_host": row.get("bounce_imap_host"),
@@ -126,7 +126,7 @@ class InstanceTable(Table):
             "uidvalidity": row.get("bounce_uidvalidity"),
         }
 
-    async def set_bounce_config(
+    def set_bounce_config(
         self,
         *,
         enabled: bool | None = None,
@@ -160,9 +160,9 @@ class InstanceTable(Table):
         if return_path is not None:
             updates["bounce_return_path"] = return_path
         if updates:
-            await self.update_instance(updates)
+            self.update_instance(updates)
 
-    async def update_bounce_sync_state(
+    def update_bounce_sync_state(
         self,
         *,
         last_uid: int,
@@ -176,7 +176,7 @@ class InstanceTable(Table):
         }
         if uidvalidity is not None:
             updates["bounce_uidvalidity"] = uidvalidity
-        await self.update_instance(updates)
+        self.update_instance(updates)
 
 
 __all__ = ["InstanceTable"]

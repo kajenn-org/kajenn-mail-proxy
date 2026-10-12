@@ -45,7 +45,6 @@ from pydantic import ValidationError
 from rich.console import Console
 from rich.table import Table
 
-from kajenn_mail_proxy.mailproxy_db import MailProxyDb
 from kajenn_mail_proxy.entities.account.schema import AccountCreate
 from kajenn_mail_proxy.entities.tenant.schema import (
     DEFAULT_ATTACHMENT_PATH,
@@ -54,6 +53,7 @@ from kajenn_mail_proxy.entities.tenant.schema import (
     TenantCreate,
     TenantRateLimits,
 )
+from kajenn_mail_proxy.mailproxy_db import MailProxyDb
 
 console = Console()
 err_console = Console(stderr=True)
@@ -71,16 +71,24 @@ def get_persistence(db_path: str) -> MailProxyDb:
     return MailProxyDb(db_path)
 
 
-def run_async(coro):
+def run_async(coro, *, persistence=None):
     """Execute an async coroutine synchronously from CLI context.
 
     Args:
         coro: Async coroutine to execute.
+        persistence: Optional persistence owned by this CLI operation.
 
     Returns:
         The coroutine's return value.
     """
-    return asyncio.run(coro)
+    async def _run():
+        try:
+            return await coro
+        finally:
+            if persistence is not None:
+                await persistence.close()
+
+    return asyncio.run(_run())
 
 
 def print_error(message: str) -> None:
@@ -291,7 +299,7 @@ def _ensure_instance(name: str, port: int = 8000, host: str = "0.0.0.0") -> dict
             console.print(f"[green]Created new instance:[/green] {name}")
             console.print(f"  API Token: {api_token}")
 
-    run_async(_init())
+    run_async(_init(), persistence=persistence)
     return _get_instance_config(name)
 
 
@@ -315,7 +323,7 @@ def _get_instance_config(name: str) -> dict[str, Any] | None:
         await persistence.init_db()
         return await persistence.get_all_config()
 
-    config = run_async(_get())
+    config = run_async(_get(), persistence=persistence)
     if not config:
         return None
 
@@ -861,7 +869,7 @@ def _add_tenants_commands(group: click.Group, instance_name: str) -> None:
             await persistence.init_db()
             return await persistence.list_tenants(active_only=active_only)
 
-        tenant_list = run_async(_list())
+        tenant_list = run_async(_list(), persistence=persistence)
 
         if as_json:
             print_json(tenant_list)
@@ -913,7 +921,7 @@ def _add_tenants_commands(group: click.Group, instance_name: str) -> None:
             await persistence.init_db()
             return await persistence.get_tenant(tenant_id)
 
-        tenant_data = run_async(_show())
+        tenant_data = run_async(_show(), persistence=persistence)
 
         if not tenant_data:
             print_error(f"Tenant '{tenant_id}' not found.")
@@ -1052,7 +1060,7 @@ def _add_tenants_commands(group: click.Group, instance_name: str) -> None:
             await persistence.init_db()
             await persistence.add_tenant(tenant_data.model_dump(exclude_none=True))
 
-        run_async(_add())
+        run_async(_add(), persistence=persistence)
         print_success(f"Tenant '{tenant_id}' created.")
 
     @tenants.command("update")
@@ -1121,7 +1129,7 @@ def _add_tenants_commands(group: click.Group, instance_name: str) -> None:
             await persistence.init_db()
             return await persistence.update_tenant(tenant_id, updates)
 
-        success = run_async(_update())
+        success = run_async(_update(), persistence=persistence)
 
         if success:
             print_success(f"Tenant '{tenant_id}' updated.")
@@ -1144,7 +1152,7 @@ def _add_tenants_commands(group: click.Group, instance_name: str) -> None:
             await persistence.init_db()
             return await persistence.delete_tenant(tenant_id)
 
-        success = run_async(_delete())
+        success = run_async(_delete(), persistence=persistence)
 
         if success:
             print_success(f"Tenant '{tenant_id}' deleted.")
@@ -1240,7 +1248,7 @@ def _add_stats_command(group: click.Group, instance_name: str) -> None:
                 },
             }
 
-        data = run_async(_stats())
+        data = run_async(_stats(), persistence=persistence)
 
         if as_json:
             print_json(data)
@@ -1417,7 +1425,7 @@ def _add_token_command(group: click.Group, instance_name: str) -> None:
                 return new_token, True
             return await persistence.get_config("api_token"), False
 
-        token, is_new = run_async(_token())
+        token, is_new = run_async(_token(), persistence=persistence)
 
         if is_new:
             console.print(f"[green]Token regenerated for instance:[/green] {instance_name}")
@@ -1456,7 +1464,7 @@ def _add_config_command(group: click.Group, instance_name: str) -> None:
             await persistence.init_db()
             return await persistence.instance.get_instance()
 
-        instance = run_async(_show())
+        instance = run_async(_show(), persistence=persistence)
 
         if as_json:
             print_json(instance or {})
@@ -1466,13 +1474,13 @@ def _add_config_command(group: click.Group, instance_name: str) -> None:
             console.print("[dim]Instance not configured.[/dim]")
             return
 
-        console.print(f"\n[bold cyan]Instance Configuration[/bold cyan]\n")
+        console.print("\n[bold cyan]Instance Configuration[/bold cyan]\n")
         console.print(f"  Name:              {instance.get('name') or 'mail-proxy'}")
         console.print(f"  API Token:         {'***' if instance.get('api_token') else '-'}")
 
         # Bounce detection config
         bounce_enabled = bool(instance.get("bounce_enabled"))
-        console.print(f"\n  [bold]Bounce Detection:[/bold]")
+        console.print("\n  [bold]Bounce Detection:[/bold]")
         console.print(f"    Enabled:         {'[green]Yes[/green]' if bounce_enabled else '[dim]No[/dim]'}")
         if bounce_enabled:
             console.print(f"    IMAP Host:       {instance.get('bounce_imap_host') or '-'}")
@@ -1533,7 +1541,7 @@ def _add_config_command(group: click.Group, instance_name: str) -> None:
             await persistence.init_db()
             await persistence.instance.update_instance(updates)
 
-        run_async(_update())
+        run_async(_update(), persistence=persistence)
         print_success("Instance configuration updated.")
 
     @config_group.command("bounce")
@@ -1571,7 +1579,7 @@ def _add_config_command(group: click.Group, instance_name: str) -> None:
                 return_path=return_path,
             )
 
-        run_async(_configure())
+        run_async(_configure(), persistence=persistence)
         print_success("Bounce detection configured and enabled.")
         console.print(f"  IMAP:         {user}@{host}:{port}/{folder}")
         console.print(f"  Return-Path:  {return_path}")
@@ -1620,7 +1628,7 @@ def _add_command_log_commands(group: click.Group, instance_name: str) -> None:
                 limit=limit,
             )
 
-        commands = run_async(_list())
+        commands = run_async(_list(), persistence=persistence)
 
         if as_json:
             print_json(commands)
@@ -1674,7 +1682,7 @@ def _add_command_log_commands(group: click.Group, instance_name: str) -> None:
                 until_ts=until,
             )
 
-        commands = run_async(_export())
+        commands = run_async(_export(), persistence=persistence)
 
         json_data = json.dumps(commands, indent=2)
 
@@ -1703,7 +1711,7 @@ def _add_command_log_commands(group: click.Group, instance_name: str) -> None:
             await persistence.init_db()
             return await persistence.purge_commands_before(before)
 
-        deleted = run_async(_purge())
+        deleted = run_async(_purge(), persistence=persistence)
         print_success(f"Deleted {deleted} command(s).")
 
 
@@ -1749,7 +1757,7 @@ def _add_info_command(group: click.Group, instance_name: str, tenant_id: str) ->
             await persistence.init_db()
             return await persistence.get_tenant(tenant_id)
 
-        tenant_data = run_async(_show())
+        tenant_data = run_async(_show(), persistence=persistence)
 
         if not tenant_data:
             print_error(f"Tenant '{tenant_id}' not found in instance '{instance_name}'.")
@@ -1797,7 +1805,7 @@ def _add_accounts_commands(group: click.Group, instance_name: str, tenant_id: st
             await persistence.init_db()
             return await persistence.list_accounts(tenant_id=tenant_id)
 
-        account_list = run_async(_list())
+        account_list = run_async(_list(), persistence=persistence)
 
         if as_json:
             print_json(account_list)
@@ -1855,7 +1863,7 @@ def _add_accounts_commands(group: click.Group, instance_name: str, tenant_id: st
             except ValueError:
                 return None
 
-        account_data = run_async(_show())
+        account_data = run_async(_show(), persistence=persistence)
 
         if not account_data:
             print_error(f"Account '{account_id}' not found for tenant '{tenant_id}'.")
@@ -1991,7 +1999,7 @@ def _add_accounts_commands(group: click.Group, instance_name: str, tenant_id: st
             await persistence.add_account(acc_dict)
             return True, None
 
-        success, error = run_async(_add())
+        success, error = run_async(_add(), persistence=persistence)
 
         if success:
             print_success(f"Account '{account_id}' created for tenant '{tenant_id}'.")
@@ -2021,7 +2029,7 @@ def _add_accounts_commands(group: click.Group, instance_name: str, tenant_id: st
             await persistence.delete_account(tenant_id, account_id)
             return True, None
 
-        success, error = run_async(_delete())
+        success, error = run_async(_delete(), persistence=persistence)
 
         if success:
             print_success(f"Account '{account_id}' deleted.")
@@ -2065,7 +2073,7 @@ def _add_messages_commands(group: click.Group, instance_name: str, tenant_id: st
 
             return messages[:limit]
 
-        msg_list = run_async(_list())
+        msg_list = run_async(_list(), persistence=persistence)
 
         if as_json:
             print_json(msg_list)
@@ -2200,7 +2208,7 @@ def _add_messages_commands(group: click.Group, instance_name: str, tenant_id: st
                     return m
             return None
 
-        msg = run_async(_show())
+        msg = run_async(_show(), persistence=persistence)
 
         if not msg:
             print_error(f"Message '{message_id}' not found.")
@@ -2259,7 +2267,7 @@ def _add_messages_commands(group: click.Group, instance_name: str, tenant_id: st
                     deleted += 1
             return deleted
 
-        deleted = run_async(_delete())
+        deleted = run_async(_delete(), persistence=persistence)
         print_success(f"Deleted {deleted} of {len(message_ids)} message(s).")
 
 
@@ -2347,7 +2355,7 @@ def _add_send_command(group: click.Group, instance_name: str, tenant_id: str) ->
             message_id = await persistence.add_message(message_data)
             return True, message_id
 
-        success, result = run_async(_send())
+        success, result = run_async(_send(), persistence=persistence)
 
         if success:
             print_success(f"Message queued with ID: {result}")

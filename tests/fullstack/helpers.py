@@ -39,7 +39,7 @@ def _env_port(name: str, default: int) -> int:
 
 TEST_HOST = os.environ.get("GMP_TEST_HOST", "localhost")
 
-MAILPROXY_URL = f"http://{TEST_HOST}:{_env_port('GMP_TEST_MAILPROXY_PORT', 8000)}"
+MAILPROXY_URL = f"http://{TEST_HOST}:{_env_port('GMP_TEST_MAILPROXY_PORT', 8000)}/mailproxy/v1"
 MAILPROXY_TOKEN = "test-api-token"
 
 MAILHOG_TENANT1_SMTP = (TEST_HOST, _env_port("GMP_TEST_MAILHOG1_SMTP_PORT", 1025))
@@ -72,16 +72,16 @@ def is_dovecot_available() -> bool:
         return False
 
 
-# Error-simulating SMTP servers (Docker network names and external ports)
-SMTP_REJECT_HOST = "smtp-reject"
+# Error-simulating SMTP servers (host addresses for the local proxy process)
+SMTP_REJECT_HOST = os.environ.get("GMP_TEST_SMTP_REJECT_HOST", TEST_HOST)
 SMTP_REJECT_PORT = _env_port("GMP_TEST_SMTP_REJECT_PORT", 1027)
-SMTP_TEMPFAIL_HOST = "smtp-tempfail"
+SMTP_TEMPFAIL_HOST = os.environ.get("GMP_TEST_SMTP_TEMPFAIL_HOST", TEST_HOST)
 SMTP_TEMPFAIL_PORT = _env_port("GMP_TEST_SMTP_TEMPFAIL_PORT", 1028)
-SMTP_TIMEOUT_HOST = "smtp-timeout"
+SMTP_TIMEOUT_HOST = os.environ.get("GMP_TEST_SMTP_TIMEOUT_HOST", TEST_HOST)
 SMTP_TIMEOUT_PORT = _env_port("GMP_TEST_SMTP_TIMEOUT_PORT", 1029)
-SMTP_RATELIMIT_HOST = "smtp-ratelimit"
+SMTP_RATELIMIT_HOST = os.environ.get("GMP_TEST_SMTP_RATELIMIT_HOST", TEST_HOST)
 SMTP_RATELIMIT_PORT = _env_port("GMP_TEST_SMTP_RATELIMIT_PORT", 1030)
-SMTP_RANDOM_HOST = "smtp-random"
+SMTP_RANDOM_HOST = os.environ.get("GMP_TEST_SMTP_RANDOM_HOST", TEST_HOST)
 SMTP_RANDOM_PORT = _env_port("GMP_TEST_SMTP_RANDOM_PORT", 1031)
 
 

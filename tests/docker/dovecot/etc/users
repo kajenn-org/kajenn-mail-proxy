@@ -6,3 +6,6 @@ bounces@localhost:{PLAIN}bouncepass:1000:1000:::/srv/vmail/bounces@localhost::
 
 # Test user for general IMAP testing (uid/gid 1000 = vmail)
 testuser@localhost:{PLAIN}testpass:1000:1000:::/srv/vmail/testuser@localhost::
+
+# PEC receipt mailbox used by the fullstack PEC tests
+pec@localhost:{PLAIN}pecpass:1000:1000:::/srv/vmail/pec@localhost::

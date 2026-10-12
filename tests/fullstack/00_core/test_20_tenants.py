@@ -11,7 +11,7 @@ import httpx
 import pytest
 
 from tests import api_routes
-from tests.fullstack.helpers import MAILHOG_TENANT1_SMTP, MAILPROXY_URL
+from tests.fullstack.helpers import CLIENT_TENANT1_URL, MAILHOG_TENANT1_SMTP, MAILPROXY_URL
 
 pytestmark = [pytest.mark.fullstack, pytest.mark.asyncio]
 
@@ -24,7 +24,8 @@ class TestTenantManagement:
         tenant_data = {
             "id": f"crud-tenant-{int(time.time())}",
             "name": "CRUD Test Tenant",
-            "client_base_url": "http://example.com",
+            "client_base_url": CLIENT_TENANT1_URL,
+            "client_sync_path": api_routes.CLIENT_SYNC_PATH,
             "active": True,
         }
         resp = await api_client.post(api_routes.TENANT, json=tenant_data)

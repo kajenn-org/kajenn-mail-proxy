@@ -17,10 +17,12 @@ email over SMTP and report results through HTTP callbacks.
 - Memory/disk attachment cache and large-file offloading to external storage
   through fsspec, with warning, rejection or replacement by download links.
 
-The SMTP and reporting pipeline remains asynchronous. Phase 1 migrates the
-application lifecycle and REST/MCP integration to Kajenn; the existing SQL
-persistence remains in use. The planned Asqueel persistence migration is **not
-implemented yet**. See [MIGRATION_PLAN.md](MIGRATION_PLAN.md).
+Kajenn lifecycle, typed REST/MCP operations and synchronous Asqueel persistence
+are implemented. Each database operation runs as a complete transaction in the
+Kajenn worker pool; SMTP and reporting remain asynchronous. The database is
+registered as `mail` in Kajenn. See [MIGRATION_PLAN.md](MIGRATION_PLAN.md) and the
+[Asqueel migration procedure](docs/asqueel-migration.md) before upgrading an
+existing installation.
 
 ## Run locally
 
@@ -39,6 +41,10 @@ uvicorn kajenn_mail_proxy.server:build_server --factory --host 0.0.0.0 --port 80
 `GMP_PORT` and `GMP_LOG_LEVEL`. The factory creates the engine and opens its
 persistence during application startup, then stops the engine during shutdown.
 Importing the server module does not create a global engine or open a database.
+SQLite retains tables in `main` in the existing database file; PostgreSQL uses
+`public`. Compatibility schema bootstrap executes DDL through Asqueel's runtime.
+The Asqueel 0.5.1 schema migrator is not used because its SQLite `main`/ATTACH
+layout is incompatible with the existing single-file database.
 
 To build a local Docker image:
 
@@ -101,6 +107,9 @@ mail-proxy myserver acme run-now
 ```
 
 CLI instances retain their data at `~/.mail-proxy/<name>/mail_service.db`.
+CLI database work uses `asyncio.to_thread` on its event loop and closes the
+persistence in `finally`. In-memory SQLite locations use a private temporary
+file, shared by the workers and removed on persistence close.
 Optional dependencies can be installed from this checkout, for example
 `pip install -e ".[postgresql,large-files,bounce]"`.
 
@@ -117,6 +126,18 @@ Large-file handling is configured per tenant through `large_file_config`,
 including `enabled`, `max_size_mb`, `storage_url` and `action` (`warn`, `reject`
 or `rewrite`).
 
+## Persistence guarantees and limits
+
+Each unit of work acquires the Asqueel runtime, sets tenant context, runs all
+SQL, commits or rolls back, and closes its connection on the same worker through
+`server.run_sync`. Database transactions do not span SMTP delivery or HTTP
+callbacks. Shutdown drains pending database work before closing persistence.
+
+A pre-existing rate-log limitation identifies accounts by `account_id` alone;
+accounts with the same ID in different tenants can share rate-limit counts.
+Use globally unique account IDs until a dedicated schema change addresses this.
+Multi-process queue coordination and exactly-once delivery are not guaranteed.
+
 ## Tests
 
 ```bash
@@ -126,7 +147,10 @@ pytest tests/unit tests/local_e2e
 pytest tests/unit tests/local_e2e -m "not pec and not fullstack"
 ```
 
-External SMTP/IMAP, Docker and PostgreSQL checks require their corresponding
+At the migration checkpoint, 754 unit/local tests and 19 PostgreSQL tests
+passed, including three Kajenn/Asqueel lifecycle tests in the unit suite.
+Docker validation is still in progress; these counts do not establish that it
+passed. External SMTP/IMAP, Docker and PostgreSQL checks require their corresponding
 services. PEC tests are excluded by default; use `pytest -m pec` when configured.
 See [tests/README.md](tests/README.md) and the migration baseline for environment
 requirements and known limitations.

@@ -13,6 +13,7 @@ from tests import api_routes
 from tests.fullstack.helpers import (
     MAILHOG_TENANT1_API,
     SMTP_REJECT_HOST,
+    SMTP_REJECT_PORT,
     clear_mailhog,
     get_msg_status,
     trigger_dispatch,
@@ -73,7 +74,7 @@ class TestDeliveryReports:
             "id": "account-report-reject",
             "tenant_id": "test-tenant-1",
             "host": SMTP_REJECT_HOST,
-            "port": 1025,
+            "port": SMTP_REJECT_PORT,
             "use_tls": False,
         }
         await api_client.post(api_routes.ACCOUNT, json=account_data)
@@ -112,7 +113,7 @@ class TestDeliveryReports:
             "id": "account-mixed-reject",
             "tenant_id": "test-tenant-1",
             "host": SMTP_REJECT_HOST,
-            "port": 1025,
+            "port": SMTP_REJECT_PORT,
             "use_tls": False,
         }
         await api_client.post(api_routes.ACCOUNT, json=account_data)

@@ -1,5 +1,6 @@
 # Copyright 2026 Softwell S.r.l. - SPDX-License-Identifier: Apache-2.0
 """Server factories defer persistence and honour deployment recipes at startup."""
+
 from __future__ import annotations
 
 import importlib
@@ -60,15 +61,19 @@ async def test_recipe_overrides_environment_and_creates_engine_at_startup(monkey
     monkeypatch.setattr(application_module, "MailProxyDb", database)
     path = tmp_path / "configured.db"
     server = server_module.build_server(
-        db_path=str(path), engine_options={"max_concurrent_sends": 5, "test_mode": True},
-        cache_options={"memory_max_mb": 7}, api_token="recipe-token",
+        db_path=str(path),
+        engine_options={"max_concurrent_sends": 5, "test_mode": True},
+        cache_options={"memory_max_mb": 7},
+        api_token="recipe-token",
     )
     app = server.applications["mailproxy"]
     monkeypatch.setattr(app, "_configure_bounce", AsyncMock())
     constructor.assert_not_called()
     assert app.api_token == "recipe-token"
     await app.on_startup()
-    database.assert_called_once_with(str(path))
+    database.assert_called_once_with(
+        str(path), run_sync=server.run_sync, runtime=server.databases["mail"]._db
+    )
     kwargs = constructor.call_args.kwargs
     assert kwargs["persistence"] is persistence
     assert kwargs["max_concurrent_sends"] == 5
