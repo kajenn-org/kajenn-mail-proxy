@@ -14,7 +14,8 @@ sincrono eseguito nel pool di thread Kajenn. Il motore SMTP resta asincrono.
 - Ramo di lavoro: `codex/kajenn-migration`.
 - Preparazione: clone locale con storia Git; file locali non versionati esclusi.
 - Il remote `legacy` identifica il clone sorgente; push disabilitato.
-- La creazione di un repository GitHub e la pubblicazione non sono ancora eseguite.
+- Destinazione GitHub pubblica approvata: `kajenn-org/kajenn-mail-proxy`, branch `main`.
+- PyPI e Read the Docs saranno configurati dall’utente.
 - Fase 1: completata nel commit `7485772` (737 test al checkpoint).
 - Fase 2: completata; 761 test unit/local, 19 PostgreSQL e 196 fullstack
   superati, con 6 xfail bounce già presenti (issue #103).
@@ -212,5 +213,7 @@ risposte SMTP 550/451/452 reali. Corrette fixture PEC e callback locali.
 Build wheel e smoke test in ambiente pulito riusciti; nuovi moduli Ruff
 senza rilievi; Bandit con configurazione repository senza rilievi.
 
-Entrambe le fasi sono implementate nel repository locale. Creazione del
-repository remoto e pubblicazione non fanno parte di questo checkpoint.
+Entrambe le fasi sono implementate. Dopo il checkpoint della migrazione,
+la pubblicazione GitHub è stata autorizzata su `kajenn-org/kajenn-mail-proxy`
+come repository pubblico. La configurazione di PyPI e Read the Docs resta
+a carico dell’utente; il link documentazione punta per ora ai sorgenti GitHub.

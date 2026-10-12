@@ -21,7 +21,7 @@ except Exception:
 version = ".".join(release.split(".")[:2])
 
 # Project information
-project = "Genro Mail Proxy"
+project = "Kajenn Mail Proxy"
 copyright = "2025, Softwell S.r.l."
 author = "Softwell S.r.l."
 
@@ -89,8 +89,8 @@ html_title = project
 # HTML context (GitHub integration)
 html_context = {
     "display_github": True,
-    "github_user": "softwell",
-    "github_repo": "genro-mail-proxy",
+    "github_user": "kajenn-org",
+    "github_repo": "kajenn-mail-proxy",
     "github_version": "main",
     "conf_py_path": "/docs/",
 }
